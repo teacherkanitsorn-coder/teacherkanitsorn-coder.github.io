@@ -48,7 +48,9 @@ function detect(url){let u;try{u=new URL(url)}catch(e){return {platform:"link"}}
  if(/youtube\.com|youtu\.be/.test(h)&&(m=s.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/)))return {platform:"youtube",yid:m[1],vertical:/shorts/.test(s)};
  if(/tiktok\.com/.test(h)&&(m=s.match(/video\/(\d+)/)))return {platform:"tiktok",embed:"https://www.tiktok.com/embed/v2/"+m[1],vertical:true};
  if(/instagram\.com/.test(h)&&(m=s.match(/\/(p|reel|reels|tv)\/([\w-]+)/)))return {platform:"instagram",embed:"https://www.instagram.com/"+(m[1]=="reels"?"reel":m[1])+"/"+m[2]+"/embed",vertical:true};
- if(/facebook\.com|fb\.watch/.test(h))return {platform:"facebook",embed:"https://www.facebook.com/plugins/video.php?show_text=false"+String.fromCharCode(38)+"href="+encodeURIComponent(s),vertical:/reel/.test(s)};
+ if(/facebook\.com|fb\.watch/.test(h)){const A=String.fromCharCode(38),fm=s.match(/\/(reel|videos)\/(\d+)/)||s.match(/[?&]v=(\d+)/)&&[0,"videos",s.match(/[?&]v=(\d+)/)[1]];
+  if(!fm)return {platform:"facebook",vertical:true};const href="https://www.facebook.com/"+(fm[1]=="reel"?"reel/":"watch/?v=")+fm[2];
+  return {platform:"facebook",fbembed:"https://www.facebook.com/plugins/video.php?show_text=false"+A+"autoplay=true"+A+"mute=true"+A+"allowfullscreen=true"+A+"href="+encodeURIComponent(href),canon:href,vertical:fm[1]=="reel"}}
  if(/\.(mp4|webm|mov|m3u8)(\?|$)/i.test(u.pathname))return {platform:"mp4",vertical:true};
  return {platform:"link"}}
 const PL={youtube:"YouTube",tiktok:"TikTok",instagram:"Instagram",facebook:"Facebook",mp4:"วิดีโอ",link:"ลิงก์"};
@@ -57,7 +59,7 @@ async function loadVideos(){let up=[];if(API)up=(await api("/clips").catch(()=>[
  V=up.map(v=>({...v,artist:v.artist||artistOf(v.title||"")}))}
 // ---------- feed ----------
 function clipEl(v,i){const d=document.createElement("section");d.className="clip";d.dataset.i=i;d.dataset.id=v.id;
- d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.url)}" target="_blank" rel="noopener">เปิดลิงก์</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><button class="mute"></button>
+ d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.canon||v.url)}" target="_blank" rel="noopener">${v.platform=="facebook"?"เปิดดูบน Facebook":"เปิดลิงก์"}</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><button class="mute"></button>
  <div class="side"><div class="av">${esc(v.artist[0])}</div>
  <button class="sp">${I("hearts")}<b class="ns">0</b><small>หัวใจรัว</small></button>
  <button class="cmb">${I("chat")}<b class="nc">0</b><small>ความเห็น</small></button>
@@ -72,7 +74,7 @@ const ytCmd=(f,fn)=>f?.contentWindow?.postMessage(JSON.stringify({event:"command
 // ---------- iOS-first playback: ONE persistent YouTube player (never re-created) ----------
 // It sits fixed behind the feed; the current clip becomes transparent over it once the scroll settles.
 // Swipes only send loadVideoById (no new iframe = fast start, no iOS autoplay re-checks). Link clips (TikTok/FB/IG/mp4) mount in-clip.
-const isYT=v=>v.kind!="link";let YTP=null,plReady=false,plVid=null,started=sessionStorage.ym_started=="1";
+const isYT=v=>!!v&&v.platform=="youtube"&&!!v.yid;let YTP=null,plReady=false,plVid=null,started=sessionStorage.ym_started=="1";
 function plEl(){if(YTP)return YTP;const w=document.createElement("div");w.id="player";w.innerHTML='<div class="pm"></div>';document.body.insertBefore(w,document.body.firstChild);
  const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;picture-in-picture";f.setAttribute("playsinline","");
  f.src=`https://www.youtube.com/embed/${yv(cur.v)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
@@ -131,7 +133,7 @@ let WR={vid:null,t:0,used:false};
 function ringEl(){let r=$("#wr");if(!r){r=document.createElement("div");r.id="wr";r.innerHTML=`<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" class="trk"/><circle cx="20" cy="20" r="17" class="rng"/></svg><span></span>`;document.body.appendChild(r)}return r}
 function ringReset(vid){WR={vid,t:0,used:false};ringPaint()}
 function ringPaint(){const r=ringEl(),show=$("#feed").style.display!="none"&&!WR.used;r.style.display=show?"flex":"none";if(!show)return;
- r.querySelector(".rng").style.strokeDashoffset=106.8*(1-WR.t/15);r.querySelector("span").textContent=WR.t<15?`ดูต่ออีกนิด! ครบ 15 วิ รับใจเดือด (${15-WR.t})`:""}
+ r.querySelector(".rng").style.strokeDashoffset=106.8*(1-WR.t/15);r.querySelector("span").textContent=WR.t<15?`${15-WR.t} วิ ใจเดือด`:""}
 function ringTick(){if(!cur)return;if(WR.vid!=cur.v.id)ringReset(cur.v.id);if(WR.used)return;WR.t++;
  if(WR.t>=15){WR.used=true;W.secs&&sendWatch();endBoost();CB.vid=cur.v.id;CB.streak=0;startBoost(cur.d)}ringPaint()}
 // ---------- game-feel FX: one canvas particle system (white/mono), capped, rAF only while alive ----------
