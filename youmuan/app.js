@@ -15,7 +15,7 @@ vol:'<path d="M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6"/>',volon:'<path d="M4 9v6h
 spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>',logout:'<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/>'};
 const I=(n,c="")=>`<svg class="i ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
 // ---------- state ----------
-let V=[],S={},cur=null,tok=ls.get("ym_tok",null),me=null,muted=true,playing=false;
+let V=[],S={},cur=null,tok=ls.get("ym_tok",null),me=null,muted=ls.get("ym_muted",true),playing=false;
 const dev=ls.get("ym_dev",null)||(ls.set("ym_dev",Math.random().toString(36).slice(2)+Date.now().toString(36)),ls.get("ym_dev"));
 const nf=n=>(n=+n||0)>=1e9?(n/1e9).toFixed(1)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n);
 const artistOf=t=>ROSTER.find(r=>t.includes(r)||t.includes(r.split(" ")[0]))||"พอดีม่วน STUDIO";
@@ -73,24 +73,35 @@ function clipEl(v,i){const d=document.createElement("section");d.className="clip
 function paint(d){const s=st(d.dataset.id);d.querySelector(".ns").textContent=nf(s.spam);d.querySelector(".nc").textContent=nf(s.cm);d.querySelector(".np").textContent=nf(s.pts);}
 const paintAll=()=>document.querySelectorAll(".clip").forEach(paint);
 const ytCmd=(f,fn)=>f?.contentWindow?.postMessage(JSON.stringify({event:"command",func:fn,args:[]}),"*");
-function mount(d){if(cur?.d==d)return;sendWatch();const v=V[d.dataset.i],m=d.querySelector(".media");cur={v,d};playing=false;W={vid:v.id,secs:0,done:false};
- document.querySelectorAll(".clip iframe,.clip video").forEach(x=>x.remove());document.querySelectorAll(".clip.paused").forEach(x=>x.classList.remove("paused"));
- if(v.kind=="link"&&v.embed){const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;clipboard-write";f.src=v.embed;m.querySelector(".lcard")?.remove();m.appendChild(f);playing=true}
- else if(v.kind=="link"&&v.platform=="link"){}
- else if(v.kind=="link"){const el=document.createElement("video");el.src=v.url;el.loop=el.playsInline=el.autoplay=true;el.muted=muted;el.onplay=()=>playing=true;el.onpause=()=>playing=false;
-  el.ontimeupdate=()=>{if(el.duration&&el.currentTime>el.duration-1.2)W.done=true};m.appendChild(el)}
- else{const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen";
-  f.src=`https://www.youtube.com/embed/${yv(v)}?autoplay=1&mute=${muted?1:0}&playsinline=1&loop=1&playlist=${yv(v)}&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-  f.onload=()=>f.contentWindow.postMessage('{"event":"listening","id":1}',"*");m.appendChild(f)}
+// Only the current clip and the next one hold a player; the rest show thumbnails.
+// The next clip is preloaded paused; when it scrolls in we just send playVideo (fast start). Always starts muted
+// (browser autoplay rule) and is unmuted right away if the user has unmuted before.
+const ytSrc=(v,auto)=>`https://www.youtube.com/embed/${yv(v)}?autoplay=${auto?1:0}&mute=1&playsinline=1&loop=1&playlist=${yv(v)}&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+function ensurePlayer(d,auto){const v=V[d.dataset.i],m=d.querySelector(".media");if(m.querySelector("iframe,video"))return false;
+ if(v.kind=="link"&&v.embed){const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;clipboard-write";f.src=v.embed;m.querySelector(".lcard")?.remove();m.appendChild(f);return true}
+ if(v.kind=="link"&&v.platform=="link")return false;
+ if(v.kind=="link"){const el=document.createElement("video");el.src=v.url;el.loop=el.playsInline=true;el.muted=true;el.preload="auto";el.autoplay=auto;el.onplay=()=>{if(cur?.d==d)playing=true};el.onpause=()=>{if(cur?.d==d)playing=false};
+  el.ontimeupdate=()=>{if(cur?.d==d&&el.duration&&el.currentTime>el.duration-1.2)W.done=true};m.appendChild(el);return true}
+ const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen";f.src=ytSrc(v,auto);
+ f.onload=()=>{f.contentWindow.postMessage('{"event":"listening","id":1}',"*");if(cur?.d==d)startPlay(d)};m.appendChild(f);return true}
+function startPlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video");
+ if(f){ytCmd(f,"playVideo");if(!muted)setTimeout(()=>{ytCmd(f,"unMute")},150)}
+ if(vd){vd.muted=muted;vd.play().catch(()=>{vd.muted=true;vd.play().catch(()=>{})})}}
+function stopPlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video");if(f){ytCmd(f,"mute");ytCmd(f,"pauseVideo")}if(vd)vd.pause()}
+function mount(d){if(cur?.d==d)return;sendWatch();if(cur)stopPlay(cur.d);const v=V[d.dataset.i];cur={v,d};playing=false;W={vid:v.id,secs:0,done:false};
+ const nx=d.nextElementSibling;ringReset(v.id);
+ document.querySelectorAll(".clip .media iframe,.clip .media video").forEach(x=>{const c=x.closest(".clip");if(c!=d&&c!=nx)x.remove()});
+ if(!ensurePlayer(d,true))startPlay(d);
+ if(nx)ensurePlayer(nx,false);
  paintMute();
  const i=+d.dataset.i;loadStats(V.slice(i,i+4).map(x=>x.id));history.replaceState(null,"","#v="+v.id+(location.hash.match(/ref=\w+/)?"&"+location.hash.match(/ref=\w+/)[0]:""))}
-addEventListener("message",e=>{if(!/youtube/.test(e.origin))return;try{const j=JSON.parse(e.data),inf=j.info||{};
+addEventListener("message",e=>{if(!/youtube/.test(e.origin))return;const cf=cur?.d.querySelector("iframe");if(!cf||e.source!==cf.contentWindow)return;try{const j=JSON.parse(e.data),inf=j.info||{};
  if(inf.playerState!==undefined)playing=inf.playerState==1,inf.playerState==0&&(W.done=true);
  if(inf.currentTime&&inf.duration&&inf.currentTime>inf.duration-1.5)W.done=true}catch(_){}});
 // count only while visible + playing + feed shown
-setInterval(()=>{if(cur&&playing&&!document.hidden&&$("#feed").style.display!="none"&&$("#promo").style.display!="flex"){st(cur.v.id).pts+=10000;q("pts",cur.v.id,1);W.secs++;paint(cur.d)}},1000);
+setInterval(()=>{if(cur&&playing&&!document.hidden&&$("#feed").style.display!="none"&&$("#promo").style.display!="flex"){st(cur.v.id).pts+=10000;q("pts",cur.v.id,1);W.secs++;paint(cur.d);ringTick()}},1000);
 function paintMute(){document.querySelectorAll(".clip .mute").forEach(b=>b.innerHTML=muted?I("vol")+"<span>แตะเพื่อเปิดเสียง</span>":I("volon"))}
-function setMute(m){muted=m;paintMute();if(!cur)return;const f=cur.d.querySelector("iframe"),vd=cur.d.querySelector("video");if(f){ytCmd(f,m?"mute":"unMute");ytCmd(f,"playVideo")}if(vd){vd.muted=m;vd.play()}}
+function setMute(m){muted=m;ls.set("ym_muted",m);paintMute();if(!cur)return;const f=cur.d.querySelector("iframe"),vd=cur.d.querySelector("video");if(f){ytCmd(f,m?"mute":"unMute");ytCmd(f,"playVideo")}if(vd){vd.muted=m;vd.play()}}
 // single tap = pause/play (or unmute first time); double+ tap = หัวใจรัว
 // taps on the transparent overlay above the player = หัวใจรัว only (no pause). Sound is the mute button.
 function onTap(d,v,e){heart(d,v,{clientX:e.clientX,clientY:e.clientY})}
@@ -98,18 +109,58 @@ function onTap(d,v,e){heart(d,v,{clientX:e.clientX,clientY:e.clientY})}
 const CB={vid:null,streak:0,until:0,combo:0,timer:null};
 function heart(d,v,e){if(CB.vid!=v.id){endBoost();CB.vid=v.id;CB.streak=0}
  const boost=Date.now()<CB.until,add=boost?100:1;
- const h=document.createElement("div");h.className="heart"+(boost?" big":"");h.innerHTML=I("heart");h.style.left=e.clientX+"px";h.style.top=e.clientY+"px";h.style.setProperty("--r",(Math.random()*40-20)+"deg");d.appendChild(h);setTimeout(()=>h.remove(),1000);
+ tapFX(e.clientX,e.clientY,add,boost);const spb=d.querySelector(".sp");spb.classList.remove("pop");void spb.offsetWidth;spb.classList.add("pop");
  d.querySelector(".sp").classList.add("on");hint(boost);
- st(v.id).spam+=add;if(boost){q("boost",v.id,1);CB.combo++;burst(d,e);$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{q("spam",v.id,1);if(++CB.streak>=100)startBoost(d)}
+ st(v.id).spam+=add;if(boost){q("boost",v.id,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{q("spam",v.id,1);if(++CB.streak>=100)startBoost(d)}
  paint(d)}
 let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";document.body.appendChild(h)}
  if(boost){h.style.display="none";return}h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b>${Math.min(CB.streak+1,100)}/100</b><i style="width:${Math.min(CB.streak+1,100)}%"></i>`;h.style.display="block";
  clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
-function startBoost(d){$("#cbh")&&($("#cbh").style.display="none");CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
+// second ใจเดือด trigger: 15 s of play on the current clip (once per clip per view; resets when the clip changes)
+let WR={vid:null,t:0,used:false};
+function ringEl(){let r=$("#wr");if(!r){r=document.createElement("div");r.id="wr";r.innerHTML=`<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" class="trk"/><circle cx="20" cy="20" r="17" class="rng"/></svg><span></span>`;document.body.appendChild(r)}return r}
+function ringReset(vid){WR={vid,t:0,used:false};ringPaint()}
+function ringPaint(){const r=ringEl(),show=$("#feed").style.display!="none"&&!WR.used;r.style.display=show?"flex":"none";if(!show)return;
+ r.querySelector(".rng").style.strokeDashoffset=106.8*(1-WR.t/15);r.querySelector("span").textContent=WR.t<15?`ดูต่ออีกนิด! ครบ 15 วิ รับใจเดือด (${15-WR.t})`:""}
+function ringTick(){if(!cur)return;if(WR.vid!=cur.v.id)ringReset(cur.v.id);if(WR.used)return;WR.t++;
+ if(WR.t>=15){WR.used=true;W.secs&&sendWatch();endBoost();CB.vid=cur.v.id;CB.streak=0;startBoost(cur.d)}ringPaint()}
+// ---------- game-feel FX: one canvas particle system (white/mono), capped, rAF only while alive ----------
+const FX={c:null,x:null,p:[],t:[],r:[],run:false,last:0,combo:0,lastTap:0,MAX:450};
+function fxInit(){if(FX.c)return;const c=FX.c=document.createElement("canvas");c.id="fx";document.body.appendChild(c);FX.x=c.getContext("2d");
+ const rs=()=>{const dpr=Math.min(devicePixelRatio||1,2);c.width=innerWidth*dpr;c.height=innerHeight*dpr;FX.x.setTransform(dpr,0,0,dpr,0,0)};rs();addEventListener("resize",rs)}
+function spawn(x,y,n,spd,big){for(let i=0;i<n&&FX.p.length<FX.MAX;i++){const a=Math.random()*Math.PI*2,s=spd*(.35+Math.random()*.9);
+ FX.p.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-spd*.35,life:0,max:.55+Math.random()*.55,size:(big?9:5)+Math.random()*(big?12:7),heart:Math.random()<.55,rot:Math.random()*6,vr:(Math.random()-.5)*10})}}
+function popText(x,y,s,size,dur=.8,center=false){FX.t.push({x,y,s,size,life:0,max:dur,center});if(FX.t.length>24)FX.t.shift()}
+function heartPath(g,s){g.beginPath();g.moveTo(0,s*.35);g.bezierCurveTo(-s*1.1,-s*.35,-s*.45,-s*1.05,0,-s*.45);g.bezierCurveTo(s*.45,-s*1.05,s*1.1,-s*.35,0,s*.35);g.fill()}
+function fxLoop(ts){const g=FX.x,dt=Math.min(.05,(ts-(FX.last||ts))/1000);FX.last=ts;g.clearRect(0,0,innerWidth,innerHeight);
+ for(let i=FX.p.length-1;i>=0;i--){const p=FX.p[i];p.life+=dt;if(p.life>=p.max){FX.p.splice(i,1);continue}p.vy+=1100*dt;p.vx*=.985;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
+  const k=1-p.life/p.max;g.globalAlpha=k;g.fillStyle="#fff";g.strokeStyle="#fff";
+  if(p.heart){g.save();g.translate(p.x,p.y);g.rotate(p.rot*.2);heartPath(g,p.size*(.6+.4*k));g.restore()}
+  else{g.lineWidth=2;g.beginPath();g.moveTo(p.x,p.y);g.lineTo(p.x-p.vx*.03,p.y-p.vy*.03);g.stroke()}}
+ for(let i=FX.r.length-1;i>=0;i--){const r=FX.r[i];r.life+=dt;if(r.life>=r.max){FX.r.splice(i,1);continue}const k=r.life/r.max;
+  g.globalAlpha=(1-k)*.9;g.strokeStyle="#fff";g.lineWidth=r.w*(1-k)+1;g.beginPath();g.arc(r.x,r.y,r.R*(1-Math.pow(1-k,3)),0,Math.PI*2);g.stroke()}
+ g.textAlign="center";g.textBaseline="middle";
+ for(let i=FX.t.length-1;i>=0;i--){const t=FX.t[i];t.life+=dt;if(t.life>=t.max){FX.t.splice(i,1);continue}const k=t.life/t.max,sc=k<.15?.6+k/.15*.6:1.2-(k-.15)*.3;
+  g.globalAlpha=1-Math.max(0,(k-.55)/.45);g.font=`700 ${Math.round(t.size*sc)}px Inter,Kanit`;g.fillStyle="#fff";g.shadowColor="rgba(255,255,255,.6)";g.shadowBlur=t.center?18:6;
+  g.fillText(t.s,t.x,t.center?t.y:t.y-k*90);g.shadowBlur=0}
+ g.globalAlpha=1;if(FX.p.length||FX.t.length||FX.r.length)requestAnimationFrame(fxLoop);else{FX.run=false;FX.last=0}}
+function fxKick(){if(!FX.run){FX.run=true;requestAnimationFrame(fxLoop)}}
+const TIERS_FX=[[100,"x100 ตำนาน!"],[50,"x50!"],[25,"x25 COMBO!"],[10,"x10 COMBO!"]];
+function tapFX(x,y,add,boost){fxInit();const now=performance.now();FX.combo=now-FX.lastTap<700?FX.combo+1:1;FX.lastTap=now;const c=FX.combo;
+ const n=boost?34:c>=50?22:c>=25?16:c>=10?12:8;spawn(x,y,n,boost?900:c>=25?650:480,boost||c>=50);
+ popText(x,y-30,"+"+add,boost?44:c>=25?30:c>=10?26:22);
+ if(boost)FX.r.push({x,y,R:110,w:6,life:0,max:.45});
+ const tier=TIERS_FX.find(t=>c==t[0]);if(tier){popText(innerWidth/2,innerHeight*.32,tier[1],tier[0]>=50?52:40,1.1,true);FX.r.push({x:innerWidth/2,y:innerHeight*.32,R:180,w:4,life:0,max:.6})}
+ if((c>=10&&c%5==0)||boost)shake(boost?7:3);navigator.vibrate&&navigator.vibrate(boost?20:10);fxKick()}
+function shake(px){const m=cur?.d.querySelector(".media");if(!m)return;m.style.setProperty("--sh",px+"px");m.classList.remove("shake");void m.offsetWidth;m.classList.add("shake")}
+function boostFX(){fxInit();for(let i=0;i<8;i++)spawn(Math.random()*innerWidth,Math.random()*innerHeight*.8,18,900,true);
+ FX.r.push({x:innerWidth/2,y:innerHeight/2,R:Math.max(innerWidth,innerHeight)*.75,w:10,life:0,max:.8});popText(innerWidth/2,innerHeight*.45,"ใจเดือด!",56,1.2,true);shake(10);navigator.vibrate&&navigator.vibrate([30,40,30]);fxKick();
+ document.body.classList.add("glow");setTimeout(()=>document.body.classList.remove("glow"),10000)}
+function startBoost(d){boostFX();$("#cbh")&&($("#cbh").style.display="none");CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
  o.innerHTML=`<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="trk"/><circle cx="50" cy="50" r="44" class="rng" id="cbr"/></svg><b id="cbs">10</b><div class="cbt">ใจเดือด!</div><div id="cbn">x0</div>`;o.style.display="flex";
  requestAnimationFrame(()=>{$("#cbr").style.transition="stroke-dashoffset 10s linear";$("#cbr").style.strokeDashoffset="276.5"});
  clearInterval(CB.timer);CB.timer=setInterval(()=>{const s=Math.ceil((CB.until-Date.now())/1000);if(s<=0)return endBoost();$("#cbs").textContent=s},200);toast("ใจเดือด! 10 วินาที กดหัวใจละ +100")}
-function endBoost(){clearInterval(CB.timer);CB.until=0;CB.streak=0;const o=$("#cbo");if(o)o.style.display="none"}
+function endBoost(){document.body.classList.remove("glow");clearInterval(CB.timer);CB.until=0;CB.streak=0;const o=$("#cbo");if(o)o.style.display="none"}
 function burst(d,e){const b=document.createElement("div");b.className="burst";b.style.left=e.clientX+"px";b.style.top=e.clientY+"px";
  b.innerHTML=Array.from({length:12},(_,i)=>`<i style="--a:${i*30}deg"></i>`).join("")+I("heart");d.appendChild(b);setTimeout(()=>b.remove(),700)}
 function share(v){const u=location.origin+location.pathname+"#v="+v.id+(me?.ref?"&ref="+me.ref:"");
@@ -123,7 +174,7 @@ $("#cmf").onsubmit=async e=>{e.preventDefault();if(!API)return;if(!tok)return ga
  await api("/comments",{method:"POST",body:JSON.stringify({id:cmV.id,text:t})}).catch(x=>toast(x.message));$("#cmi").value="";st(cmV.id).cm++;openCm(cmV)};
 async function delCm(id){await api("/admin/comment",{method:"DELETE",body:JSON.stringify({id})});openCm(cmV)}
 $("#cmx").innerHTML=I("x");$("#cmx").onclick=()=>$("#cm").classList.remove("on");
-const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>.6&&$("#feed").style.display!="none")mount(e.target)}),{threshold:[.6]});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.55&&$("#feed").style.display!="none")mount(e.target)}),{root:$("#feed"),threshold:[.55]});
 function buildFeed(start){const f=$("#feed");f.innerHTML="";V.forEach((v,i)=>{const d=clipEl(v,i);f.appendChild(d);io.observe(d)});if(start>0)f.children[start].scrollIntoView()}
 // ---------- promo: top trending, 10s ----------
 async function promo(){let t=null;try{t=(await fetch("top.json?"+Date.now()).then(r=>r.json()))[0]}catch(e){}
@@ -176,9 +227,9 @@ function gate(){go("me")}
 async function mePage(){const p=$("#p-me");
  if(!API){p.innerHTML=head("ซุปเปอร์แฟน ค่ายพอดีม่วน")+soon("สมัครซุปเปอร์แฟน","สะสมแต้มจากการดูคลิปจนจบ รับซุปเปอร์หัวใจเมื่อเพื่อนเปิดลิงก์ที่คุณแชร์ ไต่ระดับ และแลกของรางวัลสุดพิเศษ<br>ระหว่างนี้ดูคลิปและกดหัวใจรัวได้เลย")+
   `<div class="stat"><div><b>${I("star")}</b><span>แต้มสะสม</span></div><div><b>${I("hearts")}</b><span>ซุปเปอร์หัวใจ</span></div><div><b>${I("trophy")}</b><span>ระดับ</span></div></div><p style="text-align:center"><a class="lnk m" onclick="showTerms()">ข้อกำหนดและนโยบายความเป็นส่วนตัว</a></p>`;return}
- if(!tok){p.innerHTML=head("ซุปเปอร์แฟน ค่ายพอดีม่วน","สมัครฟรีเพื่อเข้าใช้งาน สะสมแต้ม และแลกของรางวัล")+`<div><span class="chip on" id="tS">สมัคร</span><span class="chip" id="tL">เข้าสู่ระบบ</span></div><div id="af"></div>`;
+ if(!tok){if(p.querySelector("#af"))return;p.innerHTML=head("ซุปเปอร์แฟน ค่ายพอดีม่วน","สมัครฟรีเพื่อเข้าใช้งาน สะสมแต้ม และแลกของรางวัล")+`<div><span class="chip on" id="tS">สมัคร</span><span class="chip" id="tL">เข้าสู่ระบบ</span></div><div id="af"></div>`;
   const su=()=>{$("#af").innerHTML=`<input id="fn" placeholder="ชื่อที่แสดง"><input id="fl" placeholder="เบอร์โทรหรืออีเมล" autocomplete="username"><input id="fp" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" autocomplete="new-password">
-   <label class="ck"><input type="checkbox" id="c1">ฉันยอมรับ<a class="lnk" onclick="showTerms()">ข้อกำหนดการใช้งาน</a></label><label class="ck"><input type="checkbox" id="c2">ฉันได้อ่านและยินยอมตาม<a class="lnk" onclick="showTerms()">ประกาศความเป็นส่วนตัว (PDPA)</a></label><button class="btn" style="width:100%" id="go">สมัครซุปเปอร์แฟน</button>`;
+   <label class="ck" for="c1"><input type="checkbox" id="c1"><span>ฉันยอมรับข้อกำหนดการใช้งาน</span></label><label class="ck" for="c2"><input type="checkbox" id="c2"><span>ฉันได้อ่านและยินยอมตามประกาศความเป็นส่วนตัว (PDPA)</span></label><p class="m" style="margin:2px 0 14px"><a class="lnk" onclick="showTerms()">อ่านข้อกำหนดและประกาศความเป็นส่วนตัว</a></p><button class="btn" style="width:100%" id="go">สมัครซุปเปอร์แฟน</button>`;
    $("#go").onclick=()=>auth("/signup",{name:$("#fn").value,login:$("#fl").value,password:$("#fp").value,acceptTerms:$("#c1").checked,acceptPrivacy:$("#c2").checked})};
   const li=()=>{$("#af").innerHTML=`<input id="fl" placeholder="เบอร์โทรหรืออีเมล" autocomplete="username"><input id="fp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"><button class="btn" style="width:100%" id="go">เข้าสู่ระบบ</button>`;
    $("#go").onclick=()=>auth("/login",{login:$("#fl").value,password:$("#fp").value})};
@@ -194,7 +245,14 @@ async function mePage(){const p=$("#p-me");
  <h3>ประวัติแต้ม</h3>${me.history.map(h=>`<div class="row"><div class="t">${h.kind=="watch"?"ดูคลิป":h.kind=="complete"?"ดูจนจบ":h.kind=="redeem"?"แลก "+esc(h.note):h.kind=="refund"?esc(h.note):esc(h.kind)}<div class="m">${h.day}</div></div><b>${h.delta>0?"+":""}${h.delta}</b></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
  <h3>การแลกของรางวัล</h3>${me.redemptions.map(r=>`<div class="row"><div class="t">${esc(r.reward)}<div class="m">${({pending:"รออนุมัติ",approved:"อนุมัติแล้ว",shipped:"จัดส่งแล้ว",rejected:"ไม่อนุมัติ (คืนแต้มแล้ว)"})[r.status]||r.status}</div></div></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
  ${me.role=="admin"?'<div id="adm"></div>':""}<p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="lnk m" onclick="showTerms()">ข้อกำหนดและ PDPA</a></p>`;if(me.role=="admin")admin();bell();if(me.claimable?.length)celebrate(me.claimable[0])}
-async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("ym_tok",tok);await refreshMe();bell();sendRef();go("home")}catch(e){toast(e.message)}}
+const FORM_IDS=["fn","fl","c1","c2","pin","ul","ut","cmi","nn","ni","nc","ns","clm","clc"];
+const FS=(()=>{try{return JSON.parse(sessionStorage.ym_form||"{}")}catch(e){return {}}})();
+function saveForm(el){if(!el||!FORM_IDS.includes(el.id))return;FS[el.id]=el.type=="checkbox"?el.checked:el.value;try{sessionStorage.ym_form=JSON.stringify(FS)}catch(e){}}
+document.addEventListener("input",e=>saveForm(e.target),true);document.addEventListener("change",e=>saveForm(e.target),true);
+function restoreForm(root=document){FORM_IDS.forEach(id=>{const el=root.querySelector("#"+id);if(!el||!(id in FS))return;if(el.type=="checkbox")el.checked=!!FS[id];else if(!el.value)el.value=FS[id]})}
+function clearForm(ids){ids.forEach(i=>delete FS[i]);try{sessionStorage.ym_form=JSON.stringify(FS)}catch(e){}}
+let rfq=0;new MutationObserver(ms=>{if(rfq)return;if(!ms.some(m=>m.target.closest?.(".page,#modal,.sheet")))return;rfq=requestAnimationFrame(()=>{rfq=0;restoreForm()})}).observe(document.body,{childList:true,subtree:true});
+async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("ym_tok",tok);clearForm(["fn","fl","c1","c2"]);await refreshMe();bell();sendRef();go("home")}catch(e){toast(e.message)}}
 async function pinLink(){try{await api("/pin-link",{method:"POST",body:JSON.stringify({pin:$("#pin").value})});toast("ยืนยันแล้ว");mePage()}catch(e){toast(e.message)}}
 async function logout(){await api("/logout",{method:"POST"}).catch(()=>{});tok=null;me=null;localStorage.removeItem("ym_tok");mePage()}
 async function addLink(){const url=$("#ul").value.trim(),s=$("#us");if(!/^https?:\/\//.test(url))return s.textContent="ลิงก์ไม่ถูกต้อง";
@@ -243,7 +301,7 @@ const NAV={home:["home","หน้าแรก"],trend:["fire","มาแรง"
 document.querySelectorAll("nav a").forEach(a=>{a.innerHTML=I(NAV[a.dataset.p][0])+NAV[a.dataset.p][1];a.onclick=()=>go(a.dataset.p)});
 function go(p){if(API&&!tok&&p!="me")p="me";document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.p==p));document.querySelectorAll(".page").forEach(x=>x.style.display="none");
  $("#feed").style.display=p=="home"?"":"none";
- if(p!="home"){endBoost();document.querySelectorAll(".clip iframe,.clip video").forEach(x=>x.remove());cur=null;$("#p-"+p).style.display="block";({trend,board,rewards,me:mePage})[p]()}
+ if(p!="home"){endBoost();$("#wr")&&($("#wr").style.display="none");document.querySelectorAll(".clip .media iframe,.clip .media video").forEach(x=>x.remove());cur=null;$("#p-"+p).style.display="block";({trend,board,rewards,me:mePage})[p]()}
  else{const d=[...document.querySelectorAll(".clip")].find(c=>Math.abs(c.getBoundingClientRect().top)<10);d&&mount(d)}}
 (async()=>{await refreshMe();bell();sendRef();await loadVideos();const m=location.hash.match(/v=([\w-]+)/);buildFeed(m?Math.max(0,V.findIndex(v=>v.id==m[1])):0);
  if(API&&!tok)go("me");else if(!m)promo()})();
