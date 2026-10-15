@@ -68,8 +68,8 @@ function clipEl(v,i){const d=document.createElement("section");d.className="clip
  <button class="sh">${I("share")}<small>แชร์</small></button>
  <div class="pts"><b class="np">0</b><small>วิวม่วน</small></div></div>
  <div class="meta"><div class="ar">@${esc(v.artist)}</div><div class="ti">${esc(v.title)}</div><div class="m">${I("music")}${v.url?"คลิปจากศิลปิน · "+PL[v.platform]:"พอดีม่วน STUDIO"}</div></div>`;
- d.querySelector(".tap").addEventListener("pointerup",e=>onTap(d,v,e));
- d.querySelector(".sp").onclick=e=>heart(d,v,{clientX:innerWidth/2,clientY:innerHeight/2});
+ const tp=d.querySelector(".tap");let pd=null;tp.addEventListener("pointerdown",e=>{pd={x:e.clientX,y:e.clientY,t:Date.now()}});tp.addEventListener("pointercancel",()=>pd=null);tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)onTap(d,v,e);pd=null});tp.addEventListener("dblclick",e=>e.preventDefault());
+ const sp=d.querySelector(".sp");sp.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=sp.getBoundingClientRect();heart(d,v,{clientX:r.left+r.width/2-40+Math.random()*30,clientY:r.top})},{passive:false});sp.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
  d.querySelector(".cmb").onclick=()=>openCm(v);d.querySelector(".sh").onclick=()=>share(v);return d}
 function paint(d){const s=st(d.dataset.id);d.querySelector(".ns").textContent=nf(s.spam);d.querySelector(".nc").textContent=nf(s.cm);d.querySelector(".np").textContent=nf(s.pts);}
 const paintAll=()=>document.querySelectorAll(".clip").forEach(paint);
@@ -94,11 +94,12 @@ function unmute(d){muted=false;document.querySelectorAll(".mute").forEach(x=>x.s
 function togglePlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video"),p=d.classList.toggle("paused");
  if(vd)p?vd.pause():vd.play();else ytCmd(f,p?"pauseVideo":"playVideo");if(f)playing=!p}
 // single tap = pause/play (or unmute first time); double+ tap = หัวใจรัว
-let tapT=null,lastTap=0;
-function onTap(d,v,e){const now=Date.now();
- if(now-lastTap<300){clearTimeout(tapT);tapT=null;heart(d,v,e);lastTap=now;return}
- lastTap=now;const ev={clientX:e.clientX,clientY:e.clientY};
- tapT=setTimeout(()=>{tapT=null;if(muted)unmute(d);else togglePlay(d)},300)}
+// pointerdown on a transparent overlay above the player. A lone tap = play/pause (decided after 250 ms);
+// any tap that follows within 400 ms is a burst: the pending pause is cancelled and every tap (incl. the first) becomes a heart
+let tapT=null,lastTap=0,first=null;
+function onTap(d,v,e){const now=Date.now(),pt={clientX:e.clientX,clientY:e.clientY};
+ if(now-lastTap<400){lastTap=now;if(tapT){clearTimeout(tapT);tapT=null;if(first){heart(d,v,first);first=null}}heart(d,v,pt);return}
+ lastTap=now;first=pt;tapT=setTimeout(()=>{tapT=null;first=null;if(muted)unmute(d);else togglePlay(d)},250)}
 // หัวใจรัว combo: +1 per tap; 100-tap streak on a clip -> 10 s "ใจเดือด" boost, +100 per tap; then streak resets
 const CB={vid:null,streak:0,until:0,combo:0,timer:null};
 function heart(d,v,e){if(CB.vid!=v.id){endBoost();CB.vid=v.id;CB.streak=0}
