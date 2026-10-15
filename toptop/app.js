@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="22";
+const APPV="23";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -39,11 +39,11 @@ setInterval(pollNew,45000);
 function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
 async function homeRefresh(){$("#newp")?.remove();const h=$('#nav a[data-p="home"]');h&&h.classList.add("busy");try{await loadFeed(true);buildFeed();$("#feed").scrollTo({top:0})}finally{setTimeout(()=>h&&h.classList.remove("busy"),350)}}
 function postEl(x,i){const d=document.createElement("section");d.className="post";d.dataset.i=i;d.dataset.id=x.id;const src=media(x.fid);
- d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><div class="alb">${[x.fid,...(x.more?x.more.split(","):[])].map((f,k)=>`<img src="${media(f)}" ${i>1||k?'loading="lazy"':""} decoding="async" draggable="false" alt="">`).join("")}</div>${x.more?`<div class="dots">${[x.fid,...x.more.split(",")].map((_,k)=>`<i${k?"":' class="on"'}></i>`).join("")}</div>`:""}</div>
+ d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><div class="alb">${[x.fid,...(x.more?x.more.split(","):[])].map((f,k)=>`<img src="${media(f)}" ${i>1||k?'loading="lazy"':""} decoding="async" draggable="false" alt="">`).join("")}</div>${x.more?`<div class="dots">${[x.fid,...x.more.split(",")].map((_,k)=>`<i${k?"":' class="on"'}></i>`).join("")}</div>`:""}${rankBadge(x)}</div>
  <div class="timer glass">${I("clock")}<small>หายไปใน</small><span class="tl">--:--</span></div>
  <div class="side"><button class="avb${x.uid!=me?.id&&!FOL.has(x.uid)?" ring":""}">${avHtml({name:x.name,avatar:x.avatar})}${tok&&x.uid!=me?.id&&!FOL.has(x.uid)?`<i class="fol fu${x.uid}" aria-label="ติดตาม"><svg viewBox="0 0 24 24"><path d="M4 17l-1-9 5 4 4-7 4 7 5-4-1 9z" fill="#fff"/></svg><b>+</b></i>`:""}</button><button class="sp"><div class="bub">${I("heart","f")}</div><b class="nh">${nf(x.hearts)}</b>หัวใจ</button>
  <button class="cmb"><div class="bub glass">${I("chat")}</div><b>${nf(x.cm)}</b>ความเห็น</button><button class="shb"><div class="bub glass">${I("share")}</div><b></b>ขอหัวใจ</button><button class="asb${AS.on?" on":""}" aria-label="เลื่อนอัตโนมัติ"><div class="bub glass"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6l5 5 5-5M7 13l5 5 5-5"/></svg></div><b class="ass">${AS.on?AS.sec+" วิ":"อัตโนมัติ"}</b></button></div>
- <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}${x.prov?`<div class="loc">📍 ${esc(locText(x))}${rankBadge(x)}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
+ <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}${x.prov?`<div class="loc">📍 ${esc(locText(x))}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
  ambient(x.thumb,(a,b)=>d.querySelector(".ph img").style.setProperty("--pc",a.replace("rgb","rgba").replace(")",",.55)")));
  const tp=d.querySelector(".alb");if(x.more)tp.addEventListener("scroll",()=>{const k=Math.round(tp.scrollLeft/tp.clientWidth);d.querySelectorAll(".dots i").forEach((e,j)=>e.classList.toggle("on",j==k))},{passive:true});let pd=null;tp.addEventListener("pointerdown",e=>pd={x:e.clientX,y:e.clientY,t:Date.now()});tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)heart(d,x,e);pd=null});
  tp.addEventListener("dblclick",e=>e.preventDefault());tp.addEventListener("pointercancel",()=>pd=null);
@@ -414,9 +414,13 @@ function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if
 // ---------- area ranking ----------
 // ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
 const LV_N=["ประเทศไทย","จังหวัด","อำเภอ","ตำบล"];let AR=null;
-function rankBadge(x){const L=(F||[]).filter(p=>p.expires>now());const nat=[...L].sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;
- if(nat&&nat<=10&&x.hearts>0)return `<span class="arb">🏆 #${nat} ของประเทศ</span>`;
- const pr=L.filter(p=>p.prov&&p.prov==x.prov).sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;return pr&&pr<=10&&x.hearts>0?`<span class="arb">🏆 #${pr} ของ ${x.prov==BKK?"":"จ."}${esc(x.prov)}</span>`:""}
+function rankBadge(x){if(!(x.hearts>0))return "";const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;
+ const r=f=>{const i=L.filter(f).sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;return i&&i<=10?i:0};const o=[];let n;
+ if(n=r(()=>1))o.push(`#${n} ของประเทศ`);
+ if(x.prov&&(n=r(p=>p.prov==x.prov)))o.push(`#${n} ของ ${B?"":"จ."}${esc(x.prov)}`);
+ if(x.amph&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph)))o.push(`#${n} ของ ${B?"เขต":"อ."}${esc(x.amph)}`);
+ if(x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push(`#${n} ของ ${B?"แขวง":"ต."}${esc(x.tamb)}`);
+ return o.length?`<div class="rbs">${o.map((t,i)=>`<span class="arb">${i?"":"🏆 "}${t}</span>`).join("")}</div>`:""}
 const areaTitle=(l,s)=>l==0?"ประเทศไทย":l==1?(s.prov==BKK?s.prov:"จ."+s.prov):l==2?`${s.prov==BKK?"เขต":"อ."}${s.amph} ${s.prov==BKK?"":"จ."}${s.prov}`:`${s.prov==BKK?"แขวง":"ต."}${s.tamb} ${s.prov==BKK?"เขต":"อ."}${s.amph}`;
 async function areaRank(){const p=$("#p-rank");TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);
  if(!AR){const d=ls.get("tt_loc",null)||{};AR={lvl:0,prov:d.prov||"สกลนคร",amph:d.amph||"",tamb:d.tamb||""}}

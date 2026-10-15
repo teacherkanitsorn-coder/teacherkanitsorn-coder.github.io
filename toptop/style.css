@@ -257,3 +257,5 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 .arp{display:flex;gap:6px;margin:8px 0}.arp select{flex:1;min-width:0;height:40px;border-radius:12px;padding:0 8px;font:14px Prompt;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.16)}.arp select option{color:#000}
 .arh{margin:12px 0 4px;font:700 20px Prompt;background:linear-gradient(90deg,#ffd54a,#ff5cc8,#b26bff);-webkit-background-clip:text;background-clip:text;color:transparent}
 #arl h3{margin:16px 0 8px;font-size:16px}
+
+.rbs{position:absolute;left:8px;right:8px;top:8px;z-index:3;display:flex;flex-wrap:wrap;gap:4px;pointer-events:none}.rbs .arb{font-size:10.5px;padding:2px 7px;line-height:1.45;white-space:nowrap}
