@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="24";
+const APPV="25";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -61,7 +61,7 @@ setInterval(()=>{if(tab!="home")return;const dead=F.filter(x=>x.expires<=now());
 // ---------- hearts: optimistic, batched, server clamps + rate limits ----------
 const HQ={};function hq(id,n,k){const q=HQ[id]||(HQ[id]={n:0,k:0});q.n+=n;q.k+=k}
 let hfly=false,hLimT=0;async function flushHearts(){if(hfly)return;hfly=true;try{for(const [pid,q] of Object.entries(HQ)){delete HQ[pid];if(!q.n&&!q.k)continue;try{const r=await api("/hearts",{method:"POST",body:JSON.stringify({pid,n:q.n,k:q.k})});const x=F.find(y=>y.id==pid);
-  if(x&&r.expires){x.hearts=r.hearts;x.expires=r.expires}if(r.limited&&Date.now()-hLimT>15000){hLimT=Date.now();toast("กดเร็วมาก! บางหัวใจไม่นับ พักแป๊บนะ ❤️")}if(r.expired)toast("รูปนี้หมดเวลาแล้ว")}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}finally{hfly=false}}
+  if(x&&r.expires){x.hearts=r.hearts+(HQ[pid]?HQ[pid].n+HQ[pid].k*100:0);x.expires=r.expires;updAllRanks()}if(r.limited&&Date.now()-hLimT>15000){hLimT=Date.now();toast("กดเร็วมาก! บางหัวใจไม่นับ พักแป๊บนะ ❤️")}if(r.expired)toast("รูปนี้หมดเวลาแล้ว")}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}finally{hfly=false}}
 setInterval(flushHearts,1000);addEventListener("pagehide",flushHearts);
 const CB={pid:null,streak:0,until:0,combo:0,timer:null};
 let pinT=null;let pinned=false;function pinFeed(){const f=$("#feed");if(!cur)return;if(!pinned){pinned=true;f.style.overflowY="hidden"}clearTimeout(pinT);pinT=setTimeout(()=>{pinned=false;f.style.overflowY="";if(cur&&Math.abs(f.scrollTop-cur.d.offsetTop)>1)f.scrollTop=cur.d.offsetTop},600)}
@@ -69,7 +69,7 @@ function heart(d,x,e){if(!tok){toast("สมัครฟรีก่อน แ�
  if(CB.pid!=x.id){endBoost();CB.pid=x.id;CB.streak=0}const boost=Date.now()<CB.until,add=boost?100:1;
  tapFX(e.clientX,e.clientY,add,boost);const sp=d.querySelector(".sp .bub");sp.animate&&sp.animate([{transform:"scale(1)"},{transform:"scale(1.15)"},{transform:"scale(1)"}],{duration:160});hint(boost);
  const h0=Math.floor(x.hearts/1e4);x.hearts+=add;x.expires+=add*MSH;if(Math.floor(x.hearts/1e4)>h0)hourFX(d);else gainFX(d,add);if(boost){hq(x.id,0,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{hq(x.id,1,0);if(++CB.streak>=100)startBoost()}paintOne(d,x)}
-let p1=0;function paintOne(d,x){if(p1)return;p1=requestAnimationFrame(()=>{p1=0;const nh=d.querySelector(".nh");if(nh)nh.textContent=nf(x.hearts);const tl=d.querySelector(".tl");if(tl)tl.textContent=left(x.expires-now())})}
+let p1=0;function paintOne(d,x){if(p1)return;p1=requestAnimationFrame(()=>{p1=0;const nh=d.querySelector(".nh");if(nh)nh.textContent=nf(x.hearts);const tl=d.querySelector(".tl");if(tl)tl.textContent=left(x.expires-now());updRanks(d,x)})}
 let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";document.body.appendChild(h)}
  if(boost){h.style.display="none";return}if(!h._b){h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b></b><i></i>`;h._b=h.querySelector("b");h._i=h.querySelector("i")}const s=Math.min(CB.streak+1,100);h._b.textContent=s+"/100";h._i.style.transform=`scaleX(${s/100})`;if(h.style.display!="block")h.style.display="block";clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
 const FX={c:null,x:null,p:[],t:[],r:[],run:false,last:0,combo:0,lastTap:0,MAX:70};
@@ -413,13 +413,22 @@ function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if
 // ---------- area ranking ----------
 // ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
 const LV_N=["ประเทศไทย","จังหวัด","อำเภอ","ตำบล"];let AR=null;
-function rankBadge(x){const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;if(x.expires<=now())return "";
- const r=f=>{const A=L.filter(f).sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires);return A.findIndex(p=>p.id==x.id)+1};const o=[];let n;
- if(n=r(()=>1))o.push(`🇹🇭 #${n} ประเทศ`);
- if(x.prov&&(n=r(p=>p.prov==x.prov)))o.push(`#${n} ${B?"":"จ."}${esc(x.prov)}`);
- if(x.prov&&x.amph&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph)))o.push(`#${n} ${B?"เขต":"อ."}${esc(x.amph)}`);
- if(x.prov&&x.amph&&x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push(`#${n} ${B?"แขวง":"ต."}${esc(x.tamb)}`);
- return o.length?`<div class="rbs">${o.map(t=>`<span class="arb">${t}</span>`).join("")}</div>`:""}
+function rankList(x){const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;if(x.expires<=now())return [];
+ const r=f=>L.filter(f).sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).findIndex(p=>p.id==x.id)+1;const o=[];let n;
+ if(n=r(()=>1))o.push([0,n,"ประเทศ","🇹🇭 "]);
+ if(x.prov&&(n=r(p=>p.prov==x.prov)))o.push([1,n,(B?"":"จ.")+x.prov,""]);
+ if(x.prov&&x.amph&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph)))o.push([2,n,(B?"เขต":"อ.")+x.amph,""]);
+ if(x.prov&&x.amph&&x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push([3,n,(B?"แขวง":"ต.")+x.tamb,""]);return o}
+function rankBadge(x){const o=rankList(x);return `<div class="rbs">${o.map(([l,n,t,f])=>`<span class="arb lv${l}" data-lv="${l}">${f}#<b>${n}</b> ${esc(t)}</span>`).join("")}</div>`}
+const RM=matchMedia("(prefers-reduced-motion: reduce)");
+function updRanks(d,x){const w=d&&d.querySelector(".rbs");if(!w)return;const o=rankList(x);if(o.length!=w.children.length){w.outerHTML=rankBadge(x);return}
+ o.forEach(([l,n])=>{const el=w.querySelector(`[data-lv="${l}"] b`);if(!el)return;const old=+el.textContent;if(old==n)return;const sp=el.parentNode;
+  sp.classList.remove("up","dn");void sp.offsetWidth;sp.classList.add(n<old?"up":"dn");setTimeout(()=>sp.classList.remove("up","dn"),700);
+  if(RM.matches||Math.abs(old-n)>8){el.textContent=n;return}let v=old;const st=n<old?-1:1;const t=setInterval(()=>{v+=st;el.textContent=v;if(v==n)clearInterval(t)},70)})}
+function updAllRanks(){document.querySelectorAll(".post").forEach(d=>{const x=F[d.dataset.i];if(x)updRanks(d,x)})}
+// live hearts refresh (lightweight: only patches counts, never reorders the feed)
+setInterval(async()=>{if(document.hidden||tab!="home"||!F.length)return;const j=await api("/photos").catch(()=>null);if(!j)return;const M=new Map(j.photos.map(p=>[p.id,p]));
+ F.forEach(x=>{const p=M.get(x.id);if(p&&!HQ[x.id]&&p.hearts>x.hearts){x.hearts=p.hearts;x.expires=p.expires}});updAllRanks()},12000);
 const areaTitle=(l,s)=>l==0?"ประเทศไทย":l==1?(s.prov==BKK?s.prov:"จ."+s.prov):l==2?`${s.prov==BKK?"เขต":"อ."}${s.amph} ${s.prov==BKK?"":"จ."}${s.prov}`:`${s.prov==BKK?"แขวง":"ต."}${s.tamb} ${s.prov==BKK?"เขต":"อ."}${s.amph}`;
 async function areaRank(){const p=$("#p-rank");TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);
  if(!AR){const d=ls.get("tt_loc",null)||{};AR={lvl:0,prov:d.prov||"สกลนคร",amph:d.amph||"",tamb:d.tamb||""}}
