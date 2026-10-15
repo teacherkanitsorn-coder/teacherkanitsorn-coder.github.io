@@ -20,7 +20,7 @@ const dev=ls.get("ym_dev",null)||(ls.set("ym_dev",Math.random().toString(36).sli
 const nf=n=>(n=+n||0)>=1e9?(n/1e9).toFixed(1)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n);
 const artistOf=t=>ROSTER.find(r=>t.includes(r)||t.includes(r.split(" ")[0]))||"พอดีม่วน STUDIO";
 const st=id=>S[id]||(S[id]={pts:0,likes:0,spam:0,cm:0});
-const yv=v=>v.yid||v.id;const thumb=v=>v.poster?v.poster:v.kind=="link"?"":`https://i.ytimg.com/vi/${yv(v)}/${v.kind=="short"?"oardefault":"hqdefault"}.jpg`;
+const yv=v=>v.yid||v.id;const thumb=v=>v.platform=="drive"?(v.poster||""):v.poster?v.poster:v.kind=="link"?"":`https://i.ytimg.com/vi/${yv(v)}/${v.kind=="short"?"oardefault":"hqdefault"}.jpg`;
 const hq=id=>`https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 function toast(t){const x=document.createElement("div");x.textContent=t;x.style.cssText="position:fixed;top:42%;left:50%;transform:translateX(-50%);background:#000;border:1px solid #fff5;padding:10px 18px;border-radius:12px;z-index:99;font:300 14px Kanit;pointer-events:none";document.body.appendChild(x);setTimeout(()=>x.remove(),2000)}
 // ---------- backend ----------
@@ -55,11 +55,11 @@ function detect(url){let u;try{u=new URL(url)}catch(e){return {platform:"link"}}
  return {platform:"link"}}
 const PL={upload:"อัปโหลด",drive:"อัปโหลด",youtube:"YouTube",tiktok:"TikTok",instagram:"Instagram",facebook:"Facebook",mp4:"วิดีโอ",link:"ลิงก์"};
 // ---------- data ----------
-async function loadVideos(){let up=[];if(API)up=(await api("/clips").catch(()=>[])).map(c=>{if(c.public_id=="drive"){const fid=(c.url.match(/\/file\/d\/([\w-]+)/)||[])[1];return {...c,platform:"drive",kind:"upload",vertical:true,fid,url:API+"/media/"+fid,preview:"https://drive.google.com/file/d/"+fid+"/preview",poster:"https://drive.google.com/thumbnail?id="+fid+String.fromCharCode(38)+"sz=w720"}}const d=detect(c.url);return d.platform=="youtube"?{...c,...d,kind:d.vertical?"short":"video",artist:c.artist}:{...c,...d,kind:"link"}});
+async function loadVideos(){let up=[];if(API)up=(await api("/clips").catch(()=>[])).map(c=>{if(c.public_id=="drive"){const fid=(c.url.match(/\/file\/d\/([\w-]+)/)||[])[1];return {...c,platform:"drive",kind:"upload",vertical:true,fid,url:API+"/media/"+fid,preview:"https://drive.google.com/file/d/"+fid+"/preview",poster:c.thumb||""}}const d=detect(c.url);return d.platform=="youtube"?{...c,...d,kind:d.vertical?"short":"video",artist:c.artist}:{...c,...d,kind:"link"}});
  V=up.map(v=>({...v,artist:v.artist||artistOf(v.title||"")}))}
 // ---------- feed ----------
 function clipEl(v,i){const d=document.createElement("section");d.className="clip";d.dataset.i=i;d.dataset.id=v.id;
- d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.canon||v.url)}" target="_blank" rel="noopener">${v.platform=="facebook"?"เปิดดูบน Facebook":"เปิดลิงก์"}</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><button class="mute"></button>
+ d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.canon||v.url)}" target="_blank" rel="noopener">${v.platform=="facebook"?"เปิดดูบน Facebook":"เปิดลิงก์"}</a></div>`:(thumb(v)?`<img loading="lazy" src="${thumb(v)}"${isYT(v)?` onerror="this.src='${hq(yv(v))}'"`:` onerror="this.remove()"`}>`:"")}</div><div class="tap"></div><button class="mute"></button>
  <div class="side"><div class="av">${esc(v.artist[0])}</div>
  <button class="sp">${I("hearts")}<b class="ns">0</b><small>หัวใจรัว</small></button>
  <button class="cmb">${I("chat")}<b class="nc">0</b><small>ความเห็น</small></button>
@@ -87,7 +87,7 @@ function plLoad(v){const id=yv(v);if(!YTP){plEl();$("#player").firstChild.classL
 function ensurePlayer(d,auto){const v=V[d.dataset.i],m=d.querySelector(".media");if(isYT(v)||m.querySelector("iframe,video"))return false;
  if(v.embed){const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;clipboard-write";f.src=v.embed;m.querySelector(".lcard")?.remove();m.appendChild(f);return true}
  if(v.platform=="link")return false;
- const el=document.createElement("video");el.src=v.url;el.loop=true;el.playsInline=true;el.setAttribute("playsinline","");el.muted=true;el.preload=auto?"auto":"metadata";el.autoplay=auto;if(v.poster)el.poster=v.poster;if(v.preview)el.onerror=()=>{if(m.querySelector("iframe"))return;el.remove();const f=document.createElement("iframe");f.allow="autoplay;fullscreen";f.src=v.preview;m.appendChild(f)};
+ const el=document.createElement("video");el.src=v.url;el.loop=true;el.playsInline=true;el.setAttribute("playsinline","");el.muted=true;el.preload=(auto||d==cur?.d?.nextElementSibling)?"auto":"metadata";el.autoplay=auto;if(v.poster)el.poster=v.poster;if(v.preview)el.onerror=()=>{if(m.querySelector("iframe"))return;el.remove();const f=document.createElement("iframe");f.allow="autoplay;fullscreen";f.src=v.preview;m.appendChild(f)};
  el.onplay=()=>{if(cur?.d==d)playing=true};el.onpause=()=>{if(cur?.d==d)playing=false};el.ontimeupdate=()=>{if(cur?.d==d&&el.duration&&el.currentTime>el.duration-1.2)W.done=true};m.appendChild(el);return true}
 function startPlay(d){const vd=d.querySelector("video");if(vd){vd.muted=muted||!started;vd.play().catch(()=>{vd.muted=true;vd.play().catch(()=>{})})}}
 function stopPlay(d){const vd=d.querySelector("video");if(vd)vd.pause()}
@@ -119,7 +119,8 @@ function tapToStart(){if(started||$("#tts")||$("#promo").style.display=="flex")r
 function onTap(d,v,e){heart(d,v,{clientX:e.clientX,clientY:e.clientY})}
 // หัวใจรัว combo: +1 per tap; 100-tap streak on a clip -> 10 s "ใจเดือด" boost, +100 per tap; then streak resets
 const CB={vid:null,streak:0,until:0,combo:0,timer:null};
-function heart(d,v,e){if(CB.vid!=v.id){endBoost();CB.vid=v.id;CB.streak=0}
+let pinT=null;function pinFeed(){const f=$("#feed");if(!cur)return;const top=cur.d.offsetTop;f.style.overflowY="hidden";if(Math.abs(f.scrollTop-top)>1)f.scrollTop=top;clearTimeout(pinT);pinT=setTimeout(()=>{f.style.overflowY="";if(cur&&Math.abs(f.scrollTop-cur.d.offsetTop)>1)f.scrollTop=cur.d.offsetTop},600)}
+function heart(d,v,e){pinFeed();if(CB.vid!=v.id){endBoost();CB.vid=v.id;CB.streak=0}
  const boost=Date.now()<CB.until,add=boost?100:1;
  tapFX(e.clientX,e.clientY,add,boost);const spb=d.querySelector(".sp");spb.classList.remove("pop");void spb.offsetWidth;spb.classList.add("pop");
  d.querySelector(".sp").classList.add("on");hint(boost);
@@ -192,7 +193,7 @@ function buildFeed(start){const f=$("#feed");if(!f.dataset.sl){f.dataset.sl=1;f.
 async function promo(){if(!V.length)return;let t=null;
  if(API)try{const x=(await api("/top"))[0];if(x)t={id:x.vid,points:x.pts}}catch(e){}
  const v=t&&V.find(x=>x.id==t.id)||V[0];if(!v)return;const p=$("#promo");let n=10;
- p.innerHTML=`<div class="pbg" style="background-image:url('${hq(yv(v))}')"></div><div class="pg"></div><div class="x"><b id="pn">10</b><span>${I("x")}</span></div>
+ p.innerHTML=`<div class="pbg" style="background-image:url('${isYT(v)?hq(yv(v)):thumb(v)}')"></div><div class="pg"></div><div class="x"><b id="pn">10</b><span>${I("x")}</span></div>
  <div class="pin"><span class="tag">มาแรง อันดับ 1</span><h1>${esc(v.title)}</h1><div class="m" style="color:#ddd">@${esc(v.artist)}</div>
  <button class="btn" style="margin-top:18px;display:inline-flex;gap:8px;align-items:center" id="pw">${I("play").replace('class="i ','class="i f ').replace("stroke:#fff","")}ดูเลย</button><div class="bar"><i id="pb"></i></div></div>`;
  p.querySelector("#pw svg").style.cssText="stroke:#000;fill:#000;width:16px;height:16px";
@@ -202,7 +203,7 @@ async function promo(){if(!V.length)return;let t=null;
  p.querySelector(".x").onclick=e=>{e.stopPropagation();close(false,true)};p.onclick=()=>close(true,true)}
 // ---------- pages ----------
 const head=(t,s)=>`<h2>${t}</h2><div class="rule"></div>${s?`<p class="m">${s}</p>`:""}`;
-const rowHtml=(v,i,lab)=>`<a class="row" onclick="openClip('${v.id}')"><div class="rk">${i+1}</div><img src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'"><div class="t">${esc(v.title)}<div class="m">@${esc(v.artist)}${lab?" · "+lab:""}</div></div></a>`;
+const rowHtml=(v,i,lab)=>`<a class="row" onclick="openClip('${v.id}')"><div class="rk">${i+1}</div><img src="${thumb(v)||"logo.svg"}" onerror="this.src='logo.svg'"><div class="t">${esc(v.title)}<div class="m">@${esc(v.artist)}${lab?" · "+lab:""}</div></div></a>`;
 async function trend(){const p=$("#p-trend");p.innerHTML=head("มาแรง")+'<p class="m">กำลังโหลด...</p>';
  if(API){const t=await api("/top").catch(()=>[]);t.forEach(x=>Object.assign(st(x.vid),x,{pts:x.pts,loaded:1}))}else await loadStats(V.slice(0,60).map(v=>v.id));
  const L=V.filter(v=>st(v.id).pts>0).sort((a,b)=>st(b.id).pts-st(a.id).pts).slice(0,50);
@@ -300,23 +301,26 @@ async function compressVideo(file,dur,onp,ctx){
  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return null;
  const saf=/Safari/.test(navigator.userAgent)&&!/Chrome|CriOS|Chromium|Android|FxiOS|Edg/.test(navigator.userAgent); // Safari's plain video/mp4 = H.264+AAC
  const mt=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1.4D401F,mp4a.40.2","video/mp4;codecs=avc1,mp4a.40.2"].concat(saf?["video/mp4"]:[]).find(t=>MediaRecorder.isTypeSupported(t));if(!mt)return null; // webm would not play on iPhone
- if(file.size<12e6)return null; // already small
+ if(file.size<3e6)return null; // already small
  const v=document.createElement("video");v.src=URL.createObjectURL(file);v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";
  await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("decode"))});
- const k=Math.min(1,720/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2;
+ const k=Math.min(1,540/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2;
  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");const vs=cv.captureStream(30);
  if(ctx){try{const src=ctx.createMediaElementSource(v),dst=ctx.createMediaStreamDestination();src.connect(dst);dst.stream.getAudioTracks().forEach(t=>vs.addTrack(t));await ctx.resume()}catch(e){v.muted=true}}else v.muted=true;
- const rec=new MediaRecorder(vs,{mimeType:mt,videoBitsPerSecond:2000000,audioBitsPerSecond:128000}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+ const rec=new MediaRecorder(vs,{mimeType:mt,videoBitsPerSecond:1000000,audioBitsPerSecond:96000}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
  const done=new Promise(ok=>rec.onstop=ok);let live=true;
  const draw=()=>{if(!live)return;g.drawImage(v,0,0,W,H);onp(Math.min(1,v.currentTime/(dur||v.duration||1)));v.requestVideoFrameCallback?v.requestVideoFrameCallback(draw):requestAnimationFrame(draw)};
  rec.start(1000);await v.play();draw();
  await new Promise(ok=>{v.onended=ok;setTimeout(ok,(dur+5)*1000)});live=false;rec.stop();await done;URL.revokeObjectURL(v.src);
- const b=new Blob(ch,{type:mt.split(";")[0]});return b.size>1000?new File([b],file.name.replace(/\.\w+$/,"")+"_720.mp4",{type:"video/mp4"}):null}
-async function driveUpload(f,name,title,artist,onp){const g=await api("/drive/ticket",{method:"POST",body:JSON.stringify({artist})});
+ const b=new Blob(ch,{type:mt.split(";")[0]});return b.size>1000?new File([b],file.name.replace(/\.\w+$/,"")+"_540.mp4",{type:"video/mp4"}):null}
+function grabPoster(file){return new Promise(ok=>{const v=document.createElement("video");v.muted=true;v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";v.src=URL.createObjectURL(file);
+ const fin=x=>{URL.revokeObjectURL(v.src);ok(x)};setTimeout(()=>fin(""),6000);
+ v.onloadeddata=()=>{v.currentTime=Math.min(0.1,(v.duration||1)/2)};v.onseeked=()=>{try{const k=360/Math.max(1,v.videoWidth),c=document.createElement("canvas");c.width=360;c.height=Math.round(v.videoHeight*k);c.getContext("2d").drawImage(v,0,0,c.width,c.height);let q=.7,u=c.toDataURL("image/jpeg",q);while(u.length>80000&&q>.3){q-=.15;u=c.toDataURL("image/jpeg",q)}fin(u)}catch(e){fin("")}};v.onerror=()=>fin("")})}
+async function driveUpload(f,name,title,artist,onp){const thumb=await grabPoster(f);const g=await api("/drive/ticket",{method:"POST",body:JSON.stringify({artist})});
  const post=b=>fetch(g.bridge,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...b,ticket:g.ticket})}).then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error);return j});
  const ini=await post({action:"init",name:f.name||name,size:f.size,mime:f2t(f)});
  const r=await new Promise((ok,no)=>{const x=new XMLHttpRequest();x.open("PUT",ini.uploadUrl);x.setRequestHeader("Content-Type",f2t(f));x.upload.onprogress=e=>e.lengthComputable&&onp(e.loaded/e.total);x.onload=()=>{try{const j=JSON.parse(x.responseText);x.status<300?ok(j):no(new Error(j.error?.message||"อัปโหลดไม่สำเร็จ"))}catch(e){no(e)}};x.onerror=()=>no(new Error("เครือข่ายขัดข้อง"));x.send(f)});
- const fin=await post({action:"finish",id:r.id});await api("/clips",{method:"POST",body:JSON.stringify({drive:{...fin,uid:g.ticket.uid},title})})}
+ const fin=await post({action:"finish",id:r.id});await api("/clips",{method:"POST",body:JSON.stringify({drive:{...fin,uid:g.ticket.uid},title,thumb})})}
 const FORM_IDS=["fn","fl","c1","c2","pin","ul","ut","cmi","nn","ni","nc","ns","clm","clc"];
 const FS=(()=>{try{return JSON.parse(sessionStorage.ym_form||"{}")}catch(e){return {}}})();
 function saveForm(el){if(!el||!FORM_IDS.includes(el.id))return;FS[el.id]=el.type=="checkbox"?el.checked:el.value;try{sessionStorage.ym_form=JSON.stringify(FS)}catch(e){}}
