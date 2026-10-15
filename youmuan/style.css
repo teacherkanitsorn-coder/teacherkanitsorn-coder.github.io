@@ -103,3 +103,17 @@ input,textarea,select,label,.page,.sheet,#modal{-webkit-user-select:text;user-se
 label.ck{display:flex;align-items:center;gap:14px;min-height:56px;padding:10px 12px;margin:8px 0;border:1px solid var(--ln);border-radius:12px;background:var(--s1);cursor:pointer;font:400 15px Kanit;-webkit-user-select:none;user-select:none}
 label.ck input{width:26px;height:26px;margin:0;flex:none;accent-color:#fff;cursor:pointer}
 label.ck:has(input:checked){border-color:#fff8}
+/* persistent player behind the feed (iOS) */
+#player{position:fixed;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;background:#000;opacity:0;transition:opacity .12s;pointer-events:none}
+#player.on{opacity:1}
+#player .pm{position:relative;width:100%;max-width:min(100%,56.25dvh);aspect-ratio:9/16;max-height:100dvh}#player .pm.wide{max-width:100%;aspect-ratio:16/9}
+#player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+#feed{position:relative;z-index:1;background:transparent}
+.clip.live{background:transparent}.clip.live .bg,.clip.live .media>img{visibility:hidden}
+#tts{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(#000a,#000e);cursor:pointer;-webkit-user-select:none;user-select:none}
+#tts img{height:34px;margin-bottom:30px}#tts .pl{width:92px;height:92px;border-radius:50%;border:1.5px solid #fff;display:grid;place-items:center;animation:bp2 1.6s ease-in-out infinite}
+#tts .pl svg{width:40px;height:40px;margin-left:6px}#tts b{font:500 22px Kanit}#tts span{font:300 13px Kanit;color:#bbb}
+
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;padding:24px;scroll-snap-align:start}.empty img{width:120px;opacity:.9;margin-bottom:18px}.empty h2{margin:0 0 6px;font-size:22px;letter-spacing:.04em}.empty p{margin:0;color:#aaa}
+
+.meta .ar{cursor:pointer;pointer-events:auto}#ap{display:none;position:fixed;inset:0;z-index:40;background:#000;overflow:auto;padding:max(12px,env(safe-area-inset-top)) 16px 90px}.aph{display:flex;justify-content:flex-end}.apc{text-align:center}.apc .row{text-align:left}.av.big{width:84px;height:84px;font-size:36px;margin:8px auto 10px;display:flex;align-items:center;justify-content:center}.apn{display:flex;justify-content:center;gap:26px;margin:12px 0}.apn b{display:block;font:600 20px Inter}.apn small{color:#aaa;font:300 12px Kanit}
