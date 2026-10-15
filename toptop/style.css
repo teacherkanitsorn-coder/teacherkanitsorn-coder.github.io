@@ -165,3 +165,4 @@ body.offfeed #top{background:linear-gradient(180deg,rgba(8,4,31,.94),rgba(8,4,31
 #lcs{width:44px;height:44px;border-radius:50%;border:0;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,#ff2fb3,#7b3cff);box-shadow:0 0 12px rgba(255,47,179,.55);transition:.2s}
 #lcs:disabled{opacity:.4;box-shadow:none}#lcs:not(:disabled):active{transform:scale(.9)}
 #lc .lct{width:44px;height:44px}
+#lc .lcm{transition:opacity 1.5s ease}#lc .lcm.dim{opacity:0}

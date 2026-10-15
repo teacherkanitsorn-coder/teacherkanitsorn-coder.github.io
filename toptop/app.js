@@ -353,12 +353,13 @@ function lcBuild(){if($("#lc"))return;const d=document.createElement("div");d.id
  document.body.appendChild(d);$("#lct").onclick=()=>{LV.hide=!LV.hide;ls.set("tt_lchide",LV.hide);if(LV.hide)$("#lcm").innerHTML="";lcVis();if(!LV.hide){LV.since=0;livePoll()}};
  $("#lcf").onsubmit=async e=>{e.preventDefault();const i=$("#lci"),t=i.value.trim();if(!t||LV.busy)return;if(!tok){toast("สมัครฟรีก่อน แล้วคุยได้เลย");return go("me")}
   LV.busy=1;LV.sync();try{await api("/chat",{method:"POST",body:JSON.stringify({text:t})});i.value="";LV.idle=0;livePoll()}catch(x){toast(x.message)}finally{LV.busy=0;LV.sync()}};
- const inp=$("#lci"),sb=$("#lcs");LV.sync=()=>sb.disabled=LV.busy||!inp.value.trim();inp.oninput=LV.sync;
+ const inp=$("#lci"),sb=$("#lcs");LV.sync=()=>sb.disabled=LV.busy||!inp.value.trim();inp.oninput=()=>{LV.sync();lcWake()};inp.onfocus=lcWake;d.addEventListener("pointerdown",lcWake,true);lcWake();
  lcVis()}
+function lcWake(){const m=$("#lcm");if(!m)return;m.classList.remove("dim");clearTimeout(LV.dt);LV.dt=setTimeout(()=>{if(document.activeElement?.id=="lci"&&$("#lci").value)return lcWake();m.classList.add("dim")},10000)}
 function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?"💬":I("x")}
 function lcAdd(ms){const box=$("#lcm");if(!box||LV.hide)return;for(const x of ms){if(box.querySelector(`[data-i="${x.id}"]`))continue;const e=document.createElement("div");e.className="lcx";e.dataset.i=x.id;
-  e.innerHTML=`${avHtml({name:x.name,avatar:x.avatar},"av")}<p><b>${esc(x.name)}</b> ${esc(x.text)}</p>`;if(me?.role=="admin")e.onclick=()=>lcMod(x);box.appendChild(e)}
- const all=[...box.children];all.slice(0,Math.max(0,all.length-8)).forEach(e=>e.remove());[...box.children].forEach((e,i,a)=>e.style.opacity=Math.min(1,.35+(i+1)/a.length))}
+  e.innerHTML=`${avHtml({name:x.name,avatar:x.avatar},"av")}<p><b>${esc(x.name)}</b> ${esc(x.text)}</p>`;if(me?.role=="admin")e.onclick=()=>lcMod(x);box.appendChild(e);LV.fresh=1}
+ if(LV.fresh){LV.fresh=0;lcWake()}const all=[...box.children];all.slice(0,Math.max(0,all.length-8)).forEach(e=>e.remove());[...box.children].forEach((e,i,a)=>e.style.opacity=Math.min(1,.35+(i+1)/a.length))}
 async function lcMod(x){const c=prompt(`ข้อความของ ${x.name}\n1 = ลบข้อความนี้\n2 = ปิดแชทคนนี้ + ลบข้อความทั้งหมด\n3 = เปิดแชทคืน`,"1");try{
  if(c=="1")await api("/admin/chat",{method:"DELETE",body:JSON.stringify({id:x.id})});else if(c=="2")await api("/admin/chat",{method:"POST",body:JSON.stringify({uid:x.uid,mute:1,purge:1})});else if(c=="3")await api("/admin/chat",{method:"POST",body:JSON.stringify({uid:x.uid,mute:0})});else return;
  toast("เรียบร้อย");$("#lcm").innerHTML="";LV.since=0;livePoll()}catch(e){toast(e.message)}}
