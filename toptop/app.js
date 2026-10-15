@@ -27,8 +27,15 @@ function setAmb(a,b){const r=document.documentElement.style;r.setProperty("--a1"
 // order: top 8 live photos by hearts first, then the rest shuffled with a per-session seed (stable within a session, no repeats)
 const SEED=sessionStorage.tt_seed||(sessionStorage.tt_seed=Math.random().toString(36).slice(2));
 const hsh=s=>{let h=2166136261;for(const c of s+SEED)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
-async function loadFeed(){try{const j=await api("/photos");const L=j.photos.filter(x=>x.expires>now()),top=[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,8),ids=new Set(top.map(x=>x.id));
- F=top.concat(L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
+let FOL=new Set(),SEEN=new Set(),newCnt=0;
+async function loadFeed(){try{const [j,fl]=await Promise.all([api("/photos"),tok?api("/following").catch(()=>[]):[]]);FOL=new Set(fl);const L=j.photos.filter(x=>x.expires>now());L.forEach(x=>SEEN.add(x.id));newCnt=0;newPill();
+ const top=[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,8),ids=new Set(top.map(x=>x.id));
+ const fol=L.filter(x=>!ids.has(x.id)&&FOL.has(x.uid)).sort((a,b)=>b.created-a.created);fol.forEach(x=>ids.add(x.id));
+ F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
+async function pollNew(){if(document.hidden||tab!="home")return;const j=await api("/photos?sort=new").catch(()=>null);if(!j)return;newCnt=j.photos.filter(x=>x.expires>now()&&!SEEN.has(x.id)&&x.uid!=me?.id).length;newPill()}
+setInterval(pollNew,45000);
+function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
+async function homeRefresh(){$("#newp")?.remove();await loadFeed();buildFeed();$("#feed").scrollTo({top:0,behavior:"smooth"})}
 function postEl(x,i){const d=document.createElement("section");d.className="post";d.dataset.i=i;d.dataset.id=x.id;const src=media(x.fid);
  d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><img src="${src}" ${i>1?'loading="lazy"':""} decoding="async" alt=""></div><div class="tap"></div>
  <div class="timer glass">${I("clock")}<span class="tl">--:--</span><small>เหลือ</small></div>
@@ -184,7 +191,7 @@ const photoGrid=ps=>`<div class="grid">${ps.map(x=>{const lv=x.expires>now();ret
 const statsOf=ps=>{const lv=ps.filter(x=>x.expires>now());return `<div class="stat"><div class="glass"><b>${lv.length}/${ps.length}</b><span>รูปมีชีวิต</span></div><div class="glass"><b>${nf(ps.reduce((s,x)=>s+x.hearts,0))}</b><span>หัวใจรวม</span></div><div class="glass"><b>${ps.length?dur(Math.max(...ps.map(x=>Math.min(x.expires,now())-x.created))):"-"}</b><span>อายุยาวสุด</span></div></div>`};
 async function userPage(uid){if(me&&uid==me.id){$("#ov").style.display="none";return go("me")}const o=$("#ov");o.style.display="block";o.innerHTML='<p class="m">กำลังโหลด...</p>';const j=await api("/user/"+uid).catch(()=>null);if(!j)return o.style.display="none";
  o.innerHTML=`<div style="display:flex;justify-content:space-between"><button class="x" onclick="$('#ov').style.display='none'">${I("back")}</button></div><div style="text-align:center">${avHtml(j.user,"av big")}<h2>${esc(j.user.name)}</h2>
-  <button class="btn" onclick="$('#ov').style.display='none';openChat(${j.user.id})">${I("chat")} ส่งข้อความ</button></div>${statsOf(j.photos)}${photoGrid(j.photos)}
+  <div class="fc"><b>${nf(j.user.followers)}</b> ผู้ติดตาม · <b>${nf(j.user.following)}</b> กำลังติดตาม</div><div style="display:flex;gap:8px;justify-content:center"><button class="btn ${j.user.isFollowing?"o":""}" id="fb${j.user.id}" onclick="follow(${j.user.id},this)">${j.user.isFollowing?"กำลังติดตาม ✓":"+ ติดตาม"}</button><button class="btn o" onclick="$('#ov').style.display='none';openChat(${j.user.id})">${I("chat")} ส่งข้อความ</button></div></div>${statsOf(j.photos)}${photoGrid(j.photos)}
   <details class="more"><summary>${I("menu")}เพิ่มเติม</summary><button class="btn o" onclick="blockUser(${j.user.id},true)">${I("ban")} บล็อก</button> <button class="btn o" onclick="reportUser(${j.user.id})">${I("flag")} รายงาน</button></details>`}
 async function mePage(){const p=$("#p-me");
  if(!tok){if(p.querySelector("#af"))return;p.innerHTML=`<div style="text-align:center;margin-top:10px"><img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png" height="44" alt=""><p class="m">โพสต์รูป ให้เพื่อนกดหัวใจต่อชีวิต<br>ทุก 10,000 หัวใจ = +1 ชั่วโมง</p></div><div class="chips"><span class="chip on" id="tS">สมัครฟรี</span><span class="chip" id="tL">เข้าสู่ระบบ</span></div><div id="af"></div>`;
@@ -195,7 +202,7 @@ async function mePage(){const p=$("#p-me");
   $("#tS").onclick=()=>{$("#tS").classList.add("on");$("#tL").classList.remove("on");su()};$("#tL").onclick=()=>{$("#tL").classList.add("on");$("#tS").classList.remove("on");li()};su();return}
  const j=await api("/me").catch(e=>{if(/เข้าสู่ระบบ/.test(e.message)){tok=null;localStorage.removeItem("tt_tok")}return null});if(!j)return mePage();me={...j.user,unread:j.unread};badge();
  p.innerHTML=`<div style="text-align:center"><a onclick="pickAvatar()" style="position:relative;display:inline-block">${avHtml(me,"av big")}<span class="glass" style="position:absolute;right:-4px;bottom:6px;border-radius:50%;width:32px;height:32px;display:grid;place-items:center">${I("cam")}</span></a>
-  <h2>${esc(me.name)}</h2><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
+  <h2>${esc(me.name)}</h2><div class="fc" id="myfc"></div><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
   <details class="more"><summary>${I("menu")}เมนูเพิ่มเติม</summary>${me.role=="admin"?'<div id="adm"></div>':`<h3>แอดมิน</h3><input id="pin" type="password" placeholder="รหัส PIN แอดมิน"><button class="btn o" onclick="pinLink()">ยืนยัน</button>`}
   <p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="m" onclick="showTerms()" style="text-decoration:underline">ข้อกำหนดและ PDPA</a></p></details>`;if(me.role=="admin")admin()}
 async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
@@ -244,13 +251,13 @@ function showTerms(){modal(`<div class="card glass"><h2>ข้อกำหนด
 // ---------- nav ----------
 const NAV=[["home","home","หน้าแรก"],["rank","rank","อันดับ"],["plus","plus",""],["chat","chat","สนทนา"],["me","user","โปรไฟล์"]];
 $("#nav").innerHTML=NAV.map(([k,ic,t])=>k=="plus"?`<a class="plus" data-p="plus" aria-label="โพสต์รูป"><span class="pb">${I("plus")}</span></a>`:`<a data-p="${k}">${I(ic)}<span>${t}</span></a>`).join("");
-document.querySelectorAll("#nav a").forEach(a=>a.onclick=()=>a.dataset.p=="plus"?composer():go(a.dataset.p));
+document.querySelectorAll("#nav a").forEach(a=>a.onclick=()=>a.dataset.p=="plus"?composer():a.dataset.p=="home"&&tab=="home"?homeRefresh():(a.dataset.p=="home"?(go("home"),homeRefresh()):go(a.dataset.p)));
 if(!$("#p-chat"))document.body.insertAdjacentHTML("beforeend",'<section class="page" id="p-chat"></section>');
 function go(p){tab=p;document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.p==p));document.querySelectorAll(".page").forEach(x=>x.style.display="none");$("#ov").style.display="none";
- $("#feed").style.display=p=="home"?"":"none";document.body.classList.toggle("offfeed",p!="home");if(p!="home"){endBoost();$("#p-"+p).style.display="block";({rank,chat:chatPage,me:mePage})[p]()}badge()}
+ $("#feed").style.display=p=="home"?"":"none";document.body.classList.toggle("offfeed",p!="home");if(p!="home"){endBoost();$("#p-"+p).style.display="block";({rank,chat:chatPage,me:mePage})[p]()}badge();typeof newPill=="function"&&newPill()}
 function sortBar(){let s=$(".sort");if(!s){s=document.createElement("div");s.className="sort glass";document.body.appendChild(s)}
  s.innerHTML=`<span class="${sortBy!="new"?"on":""}" data-s="time">เวลาเหลือ</span><span class="${sortBy=="new"?"on":""}" data-s="new">ใหม่ล่าสุด</span>`;s.querySelectorAll("span").forEach(x=>x.onclick=async()=>{sortBy=x.dataset.s;ls.set("tt_sort",sortBy);sortBar();await loadFeed();buildFeed()})}
-(async()=>{await loadFeed();const m=location.hash.match(/p=([\w-]+)/);go("home");buildFeed(m?m[1]:null);if(tok)refreshUnread();await music();tapToStart()})();
+(async()=>{$("#srch")&&($("#srch").innerHTML=I("search"));await loadFeed();const m=location.hash.match(/p=([\w-]+)/);go("home");buildFeed(m?m[1]:null);if(tok)refreshUnread();await music();tapToStart()})();
 
 // ---------- time-added FX: big pop at each +1 ชม. (every 10,000 hearts), light pulse otherwise ----------
 let gT=0;function gainFX(d,add){const t=performance.now();if(t-gT<(add>1?120:260))return;gT=t;const tm=d.querySelector(".timer");tm&&tm.animate&&tm.animate([{boxShadow:"0 0 0 0 rgba(47,224,255,0)"},{boxShadow:`0 0 ${add>1?26:14}px 2px rgba(47,224,255,.75)`},{boxShadow:"0 0 0 0 rgba(47,224,255,0)"}],{duration:add>1?420:300});
@@ -278,3 +285,22 @@ async function djPick(cid){const b=$("#djb");try{const r=await api("/dj",{method
   try{st.textContent="กำลังเตรียมสลิป...";const c=await compressImage(f,1280,400e3);const d=await driveSend(c.blob,q=>{$("#djbar").firstChild.style.width=Math.round(q*100)+"%";st.textContent="กำลังส่ง "+Math.round(q*100)+"%"});
    await api("/dj/slip",{method:"POST",body:JSON.stringify({id:r.id,drive:d})});b.innerHTML=`<div class="empty" style="height:auto;padding:40px 10px"><h2>ส่งแล้ว ✓</h2><p>แอดมินจะตรวจสลิป แล้วเพลง "${esc(r.title)}" จะเล่นต่อจากเพลงปัจจุบัน</p><p class="m">อ้างอิง ${r.ref}</p><button class="btn" onclick="closeSheet()">ตกลง</button></div>`}
   catch(e){st.textContent="ผิดพลาด: "+e.message;bt.disabled=false}}}catch(e){toast(e.message)}}
+
+async function follow(id,el){if(!tok){toast("สมัครฟรีก่อน แล้วติดตามได้");return go("me")}const on=!FOL.has(id);try{const r=await api("/follow",{method:"POST",body:JSON.stringify({id,on})});on?FOL.add(id):FOL.delete(id);
+ document.querySelectorAll("#fb"+id+",.sfb"+id).forEach(b=>{b.textContent=on?(b.classList.contains("sm")?"ติดตามแล้ว":"กำลังติดตาม ✓"):(b.classList.contains("sm")?"ติดตาม":"+ ติดตาม");b.classList.toggle("o",on)});
+ const fc=$("#ov .fc b");if(fc)fc.textContent=nf(r.followers)}catch(e){toast(e.message)}}
+setInterval(()=>{const m=$("#myfc");if(m&&!m.dataset.ok&&me){m.dataset.ok=1;api("/user/"+me.id).then(j=>m.innerHTML=`<b>${nf(j.user.followers)}</b> ผู้ติดตาม · <b>${nf(j.user.following)}</b> กำลังติดตาม`).catch(()=>{})}},700);
+// ---------- search members (header icon) ----------
+function searchOpen(){if(!tok){toast("สมัครฟรีก่อน แล้วค้นหาเพื่อนได้");return go("me")}const s=$("#sheet");s.className="glass on full";
+ s.innerHTML=`<div class="hd"><button onclick="closeSheet()">${I("back")}</button><input id="sq" placeholder="ค้นหาชื่อสมาชิก" autocomplete="off" style="margin:0;flex:1"></div><div class="bd" id="sres"></div>`;
+ let t=null;$("#sq").oninput=()=>{clearTimeout(t);t=setTimeout(searchRun,220)};setTimeout(()=>$("#sq").focus(),50)}
+async function searchRun(){const q=$("#sq")?.value.trim(),r=$("#sres");if(!r)return;if(!q){r.innerHTML="";return}const L=await api("/users?q="+encodeURIComponent(q)).catch(()=>[]);if($("#sq")?.value.trim()!=q)return;
+ L.forEach(u=>u.f?FOL.add(u.id):0);r.innerHTML=L.map(u=>`<div class="row" onclick="closeSheet();userPage(${u.id})">${avHtml(u)}<div class="t"><div>${esc(u.name)}</div></div><button class="btn sm sfb${u.id} ${u.f?"o":""}" onclick="event.stopPropagation();follow(${u.id},this)">${u.f?"ติดตามแล้ว":"ติดตาม"}</button></div>`).join("")}
+// ---------- DJ nudge toast ----------
+let djBack=0,djN=0;function djNudge(){const busy=$("#sheet.on")||$("#tts")||document.hidden||!PLS.length||Date.now()<djBack||tab!="home";let n=$("#djn");
+ if(busy){n&&n.classList.remove("on");return}if(!n){n=document.createElement("div");n.id="djn";n.className="glass";n.innerHTML=`<span>อยากเปลี่ยนเพลงไหม? 🎵 เป็นดีเจแค่ 5 บาท</span><button aria-label="ปิด">${I("x")}</button>`;
+  n.onclick=()=>{n.classList.remove("on");djOpen()};n.querySelector("button").onclick=e=>{e.stopPropagation();n.classList.remove("on");djBack=Date.now()+300000};document.body.appendChild(n)}
+ n.classList.add("on");n.animate([{transform:"translate(-50%,0)"},{transform:"translate(-50%,-14px)"},{transform:"translate(-50%,0)"},{transform:"translate(-50%,-6px)"},{transform:"translate(-50%,0)"}],{duration:700,easing:"ease-out"})}
+function djCycle(){let k=0;const b=()=>{if(k++<3){djNudge();setTimeout(b,4000)}else $("#djn")?.classList.remove("on")};b()}
+setTimeout(()=>{djCycle();setInterval(djCycle,60000)},20000);
+setInterval(()=>{if($("#sheet.on")||$("#tts"))$("#djn")?.classList.remove("on")},500);
