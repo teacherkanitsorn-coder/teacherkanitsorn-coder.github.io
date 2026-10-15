@@ -31,7 +31,7 @@ let FOL=new Set(),SEEN=new Set(),newCnt=0;
 async function loadFeed(rand){try{const [j,fl]=await Promise.all([api("/photos"),tok?api("/following").catch(()=>[]):[]]);FOL=new Set(fl);const L=j.photos.filter(x=>x.expires>now());L.forEach(x=>SEEN.add(x.id));newCnt=0;newPill();
  const top=[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,8),ids=new Set(top.map(x=>x.id));
  const fol=L.filter(x=>!ids.has(x.id)&&FOL.has(x.uid)).sort((a,b)=>b.created-a.created);fol.forEach(x=>ids.add(x.id));
- if(rand){F=L.filter(x=>x.uid!=me?.id).sort(()=>Math.random()-.5);return}F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
+ if(rand){F=[...L];for(let i=F.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[F[i],F[k]]=[F[k],F[i]]}return}F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
 async function pollNew(){if(document.hidden||tab!="home")return;const j=await api("/photos?sort=new").catch(()=>null);if(!j)return;newCnt=j.photos.filter(x=>x.expires>now()&&!SEEN.has(x.id)&&x.uid!=me?.id).length;newPill()}
 setInterval(pollNew,45000);
 function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
@@ -344,3 +344,45 @@ function cropEditor(file){return new Promise(async(done,fail)=>{let bm;try{bm=aw
   const c=document.createElement("canvas");c.width=OW;c.height=OH;const g=c.getContext("2d");g.imageSmoothingQuality="high";g.drawImage(bm,sx,sy,sw,sh,0,0,OW,OH);
   const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.92));close(new File([b],"crop.jpg",{type:"image/jpeg"}))};
  requestAnimationFrame(lay)})}
+
+// ---------- live room: floating chat overlay + DJ voice + presence ----------
+const LV={since:0,join:Date.now(),played:new Set(ls.get("tt_vplayed",[])),hide:ls.get("tt_lchide",false),idle:0,t:0,busy:0,muted:false};
+function lcBuild(){if($("#lc"))return;const d=document.createElement("div");d.id="lc";
+ d.innerHTML=`<div class="lcm" id="lcm"></div><div class="lcb"><button class="lct" id="lct" aria-label="ซ่อนแชท"></button><form id="lcf"><input id="lci" maxlength="120" placeholder="พิมพ์คุยกัน…" enterkeyhint="send" autocomplete="off"></form><button class="lcmic" id="lcmic" aria-label="กดค้างเพื่อพูด">🎙️</button></div><div id="djv">🎙️ ดีเจพูด</div>`;
+ document.body.appendChild(d);$("#lct").onclick=()=>{LV.hide=!LV.hide;ls.set("tt_lchide",LV.hide);if(LV.hide)$("#lcm").innerHTML="";lcVis();if(!LV.hide){LV.since=0;livePoll()}};
+ $("#lcf").onsubmit=async e=>{e.preventDefault();const i=$("#lci"),t=i.value.trim();if(!t||LV.busy)return;if(!tok){toast("สมัครฟรีก่อน แล้วคุยได้เลย");return go("me")}
+  LV.busy=1;try{await api("/chat",{method:"POST",body:JSON.stringify({text:t})});i.value="";LV.idle=0;livePoll()}catch(x){toast(x.message)}finally{LV.busy=0}};
+ const mic=$("#lcmic");if(mic){mic.addEventListener("pointerdown",e=>{e.preventDefault();recStart()});["pointerup","pointercancel","pointerleave"].forEach(k=>mic.addEventListener(k,()=>recStop()));mic.oncontextmenu=e=>e.preventDefault()}
+ lcVis()}
+function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?"💬":I("x");$("#lcmic").style.display=me?.role=="admin"&&!LV.hide?"":"none"}
+function lcAdd(ms){const box=$("#lcm");if(!box||LV.hide)return;for(const x of ms){if(box.querySelector(`[data-i="${x.id}"]`))continue;const e=document.createElement("div");e.className="lcx";e.dataset.i=x.id;
+  e.innerHTML=`${avHtml({name:x.name,avatar:x.avatar},"av")}<p><b>${esc(x.name)}</b> ${esc(x.text)}</p>`;if(me?.role=="admin")e.onclick=()=>lcMod(x);box.appendChild(e)}
+ const all=[...box.children];all.slice(0,Math.max(0,all.length-8)).forEach(e=>e.remove());[...box.children].forEach((e,i,a)=>e.style.opacity=Math.min(1,.35+(i+1)/a.length))}
+async function lcMod(x){const c=prompt(`ข้อความของ ${x.name}\n1 = ลบข้อความนี้\n2 = ปิดแชทคนนี้ + ลบข้อความทั้งหมด\n3 = เปิดแชทคืน`,"1");try{
+ if(c=="1")await api("/admin/chat",{method:"DELETE",body:JSON.stringify({id:x.id})});else if(c=="2")await api("/admin/chat",{method:"POST",body:JSON.stringify({uid:x.uid,mute:1,purge:1})});else if(c=="3")await api("/admin/chat",{method:"POST",body:JSON.stringify({uid:x.uid,mute:0})});else return;
+ toast("เรียบร้อย");$("#lcm").innerHTML="";LV.since=0;livePoll()}catch(e){toast(e.message)}}
+async function livePoll(){clearTimeout(LV.t);if(document.hidden)return;lcBuild();lcVis();
+ try{const showing=tab=="home"&&!LV.hide,q=showing?LV.since:-1;const j=await api("/live?since="+(q<0?LV.since||1e15:q));
+  if(showing&&j.msgs.length){lcAdd(j.msgs);LV.since=j.msgs[j.msgs.length-1].id;LV.idle=0}else LV.idle++;
+  if(j.voice)voicePlay(j.voice,j.now)}catch(e){LV.idle++}
+ const ms=document.hidden?0:(tab=="home"&&!LV.hide?(LV.idle<15?2500:5000):8000);if(ms)LV.t=setTimeout(livePoll,ms)}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){LV.idle=0;livePoll()}else clearTimeout(LV.t)});
+// voice playback: once, only clips newer than when we joined and <2 min old; music ducked meanwhile
+let VA=null;const vaPrime=()=>{if(VA)return;VA=new Audio();VA.playsInline=true;VA.src="data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAAhmcmVlAAAAAG1kYXQ=";VA.play().catch(()=>{})};
+addEventListener("pointerdown",vaPrime,{once:true,capture:true});
+async function voicePlay(v,srvNow){if(LV.played.has(v.id)||v.t<LV.join-5000||srvNow-v.t>120000)return;LV.played.add(v.id);ls.set("tt_vplayed",[...LV.played].slice(-20));
+ vaPrime();const ind=$("#djv");try{const r=await fetch(TT_API+"/voice/"+v.id);if(!r.ok)return;const u=URL.createObjectURL(await r.blob());VA.src=u;
+  ytc("setVolume",[12]);ind.classList.add("on");await VA.play();await new Promise(ok=>{VA.onended=VA.onerror=ok;setTimeout(ok,35000)})}catch(e){}finally{ind.classList.remove("on");ytc("setVolume",[100])}}
+// admin push-to-talk
+let REC=null;async function recStart(){if(REC)return;try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const mt=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported?.(t))||"";
+ const r=new MediaRecorder(s,mt?{mimeType:mt,audioBitsPerSecond:48000}:{});const ch=[];REC={r,s,t0:Date.now(),ch};r.ondataavailable=e=>e.data.size&&ch.push(e.data);r.start(250);
+ $("#lcmic").classList.add("rec");ytc("setVolume",[12]);REC.cap=setTimeout(recStop,30000);toast("กำลังพูด… ปล่อยเพื่อส่ง")}catch(e){REC=null;toast("เปิดไมค์ไม่ได้: "+e.message)}}
+async function recStop(){const R=REC;if(!R||R.stopping)return;R.stopping=1;clearTimeout(R.cap);await new Promise(ok=>{R.r.onstop=ok;R.r.stop()});R.s.getTracks().forEach(t=>t.stop());REC=null;$("#lcmic")?.classList.remove("rec");ytc("setVolume",[100]);
+ const dur=(Date.now()-R.t0)/1000;if(dur<0.7)return toast("กดค้างไว้แล้วพูด");const blob=new Blob(R.ch,{type:R.r.mimeType||"audio/mp4"});
+ const b64=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(String(f.result).split(",")[1]);f.readAsDataURL(blob)});
+ try{const j=await api("/admin/voice",{method:"POST",body:JSON.stringify({mime:blob.type,data:b64,dur})});LV.played.add(j.id);toast(`ส่งเสียงแล้ว (${Math.round(dur)} วิ)`)}catch(e){toast(e.message)}}
+// admin dashboard on top of the admin panel
+const _admin=admin;admin=async function(){await _admin();const a=$("#adm");if(!a)return;try{const d=await api("/admin/dash");const c=document.createElement("div");c.className="dash";
+ c.innerHTML=[["สมาชิกทั้งหมด",d.members],["ออนไลน์ตอนนี้",d.online],["สมัครใหม่วันนี้",d.newToday],["รูปที่ยังมีชีวิต",d.live],["หัวใจวันนี้",d.heartsToday]].map(([l,v])=>`<div><b>${nf(v)}</b><span>${l}</span></div>`).join("");a.prepend(c)}catch(e){}};
+const _go=go;go=function(...a){const r=_go.apply(this,a);setTimeout(()=>{lcVis();if(tab=="home"&&!LV.hide){LV.idle=0;livePoll()}},0);return r};
+setTimeout(livePoll,1500);
