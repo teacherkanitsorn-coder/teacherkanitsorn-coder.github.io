@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="28";
+const APPV="29";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -14,8 +14,8 @@ const I=(n,c="")=>`<svg class="i ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
 let tok=ls.get("tt_tok",null),me=null,F=[],cur=null,sortBy=ls.get("tt_sort","time"),NOW_OFF=0,tab="home";
 const now=()=>Date.now()+NOW_OFF;
 const nf=n=>(n=+n||0)>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":n.toLocaleString("en-US");
-const media=fid=>fid?API+"/media/"+fid:"";
-const avHtml=(u,cls="av")=>u?.avatar?`<div class="${cls}" style="background:center/cover url('${media(u.avatar)}')"></div>`:`<div class="${cls}">${esc(((u?.name||"?").replace(/^[เแโใไ]+/,"")||"?")[0])}</div>`;
+const media=fid=>fid?API+"/media/"+fid:"",thumbUrl=(fid,w)=>fid?API+"/thumb/"+fid+"?w="+w:"";
+const avHtml=(u,cls="av")=>u?.avatar?`<div class="${cls}" style="background:center/cover url('${thumbUrl(u.avatar,cls.includes("big")?400:240)}')"></div>`:`<div class="${cls}">${esc(((u?.name||"?").replace(/^[เแโใไ]+/,"")||"?")[0])}</div>`;
 function left(ms){ms=Math.max(0,ms);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(x).padStart(2,"0")}
 function dur(ms){const m=Math.round(ms/6e4);return m>=60?Math.floor(m/60)+" ชม. "+(m%60)+" นาที":m+" นาที"}
 function toast(t){const x=$("#toast")||Object.assign(document.createElement("div"),{id:"toast",className:"glass"});document.body.appendChild(x);x.textContent=t;x.style.display="block";clearTimeout(x._t);x._t=setTimeout(()=>x.style.display="none",2200)}
@@ -187,7 +187,7 @@ function pickAvatar(){let i=$("#avin");if(!i){i=document.createElement("input");
   catch(e){const msg=/เปิดรูปไม่ได้|decode|HEIC/i.test(e.message)?"เปิดรูปนี้ไม่ได้ ลองเลือกรูปอื่น (ถ้าเป็นรูป HEIC ให้แคปหน้าจอรูปนั้นแล้วเลือกใหม่)":e.message;show("");modal(`<h3>เปลี่ยนรูปโปรไฟล์ไม่สำเร็จ</h3><p class="m">ขั้นตอน: ${st}</p><p>${esc(msg)}</p><button class="btn w" onclick="$('#modal').style.display='none';pickAvatar()">ลองอีกครั้ง</button>`)}};
  i.click()}
 // ---------- อันดับ: most time left (live) + Hall of fame (longest-lived) ----------
-const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${x.thumb||media(x.fid)}" alt=""><div class="t"><div>${esc(x.caption||"รูปของ "+x.name)}</div><div class="m">@${esc(x.name)} · ${lab}</div></div></a>`;
+const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${thumbUrl(x.fid,240)}" loading="lazy" decoding="async" style="background:#1b1438 center/cover ${x.thumb?`url('${x.thumb}')`:""}" alt=""><div class="t"><div class="pn">${esc(x.name)}</div><div class="m">${x.caption?esc(x.caption)+" · ":""}${lab}</div></div></a>`;
 function rank(){return areaRank()}
 async function openPhoto(id,live){$("#ov").style.display="none";if(live){if(!F.find(x=>x.id==id))await loadFeed();go("home");buildFeed(id)}else{const j=await api("/photo/"+id).catch(()=>null);if(!j)return;
  const x=j.photo;modal(`<div style="text-align:center"><img src="${media(x.fid)}" style="max-width:100%;max-height:60dvh;border-radius:20px" alt=""><h3>รูปของ ${esc(x.name)} · หมดเวลาแล้ว</h3><p class="m">อยู่มา ${dur(x.expires-x.created)} · ${nf(x.hearts)} หัวใจ</p></div>`)}}

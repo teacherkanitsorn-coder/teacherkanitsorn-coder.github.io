@@ -288,3 +288,7 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 .qta .qr{margin:10px 0}.qta .qr>div{display:flex;justify-content:space-between;font-size:13px;gap:8px}.qta .qr i{display:block;height:7px;border-radius:9px;background:rgba(255,255,255,.1);margin-top:5px;overflow:hidden}.qta .qr u{display:block;height:100%;border-radius:9px}
 .lgl a{text-decoration:underline;color:#cfc6ff}.btn.dz{border-color:#ff4d6d;color:#ff8fa3}
 .legal h3{margin:16px 0 6px}.legal ul{padding-left:20px;margin:0}.legal li{margin:4px 0;line-height:1.5}
+
+.row img{object-fit:cover;image-rendering:auto}.row .t .pn{font-weight:600}
+.sbd{max-height:calc(88dvh - 64px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+#rrgo{position:sticky;bottom:0;z-index:2;box-shadow:0 -10px 24px rgba(10,6,30,.85)}
