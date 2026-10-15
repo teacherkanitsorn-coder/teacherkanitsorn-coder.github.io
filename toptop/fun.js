@@ -25,7 +25,7 @@ async function missions(){if(!tok){toast("สมัครฟรีก่อน �
 async function claimMis(k,b){b.disabled=true;try{const r=await api("/missions",{method:"POST",body:JSON.stringify({k})});toast("🎉 ได้รับ "+r.prize);missions()}catch(e){toast(e.message);b.disabled=false}}
 // profile titles + entries
 function titleBlock(u){const t=titlesOf(u);return `<div class="ttls">${t.map(([n,c])=>`<span class="ttl big ${c}">${n}</span>`).join("")}</div><div class="fc">🦸 ฮีโร่ช่วยชีวิตรูป <b>${nf(u.uh||0)}</b> ครั้ง</div>`}
-const _mePage=mePage;mePage=async function(){await _mePage();if(!me||!$("#avst"))return;$("#avst").insertAdjacentHTML("afterend",titleBlock(me)+`<div class="funb"><button class="btn o" onclick="missions()">🎯 ภารกิจ</button>${typeof boxOpen=="function"?`<button class="btn o" onclick="boxOpen()">🎁 กล่องสุ่ม${me.boxes?` <b class="bdg">${me.boxes}</b>`:""}</button>`:""}${typeof recap=="function"?`<button class="btn o${new Date(Date.now()+BKO).getUTCDay()==0?" sun":""}" onclick="recap()">📊 สรุปสัปดาห์</button>`:""}</div>`)};
+const _mePage=mePage;mePage=async function(){await _mePage();if(!me||!$("#avst"))return;$("#avst").insertAdjacentHTML("afterend",titleBlock(me)+`<div class="funb"><button class="btn o" onclick="missions()">🎯 ภารกิจ</button>${typeof boxOpen=="function"?`<button class="btn o" onclick="boxOpen()">🎁 กล่องสุ่ม${me.boxes?` <b class="bdg">${me.boxes}</b>`:""}</button>`:""}</div>`)};
 const _userPage=userPage;userPage=async function(uid){await _userPage(uid);const o=$("#ov"),h=o?.querySelector("h2");if(!h||!me&&!uid)return;const j=await api("/user/"+uid).catch(()=>null);if(j&&o.querySelector("h2")===h)h.insertAdjacentHTML("afterend",titleBlock(j.user))};
 // rank page: battle banner + champion badge
 const _areaRank=areaRank;areaRank=async function(){await _areaRank();const p=$("#p-rank"),h=p?.querySelector(".arh");if(!h)return;if(!BT)await btLoad();if(!BT)return;const L=btLast();let s="";
@@ -35,7 +35,7 @@ const _areaRank=areaRank;areaRank=async function(){await _areaRank();const p=$("
 // notifications (artist visits, duel wins)
 async function notifs(){const L=await api("/notifs").catch(()=>[]);L.forEach((n,i)=>setTimeout(()=>toast(n.text),i*3200))}
 btLoad();duLoad();if(tok)setTimeout(()=>{api("/missions").catch(()=>{});notifs()},1500);
-// ===== batch 2: mystery box, artist admin, song dedication, weekly recap =====
+// ===== batch 2: mystery box, artist admin, song dedication =====
 async function boxOpen(){if(!tok)return go("me");sheet('<p class="m">กำลังโหลด...</p>');$("#sheet .hd b").textContent="🎁 กล่องสุ่ม";const j=await api("/missions").catch(()=>null);if(!j)return;const n=j.boxes||0,pr=(j.box_prog||0)%1000;
  $("#sheet .sbd").innerHTML=`<div class="boxw"><div class="gift${n?" ready":""}" id="gift">🎁</div><div class="bxn">มีกล่อง <b>${n}</b> กล่อง</div><div class="mbar"><u style="width:${pr/10}%"></u></div><p class="m">กดหัวใจให้รูปคนอื่นครบทุก 1,000 ดวง ได้ 1 กล่อง (อีก ${nf(1000-pr)} ดวง)<br>รางวัล: เวลาเพิ่มให้รูปของคุณ · หัวใจโบนัส · หรือลุ้น <b>สิทธิ์ขอเพลงฟรี</b> (หายาก!)</p>${n?'<button class="btn w" id="gbtn" onclick="boxGo()">เปิดกล่อง!</button>':""}<div id="gres"></div></div>`}
 async function boxGo(){const g=$("#gift"),b=$("#gbtn");b.disabled=true;g.classList.add("shake");try{const [r]=await Promise.all([api("/box/open",{method:"POST",body:"{}"}),new Promise(s=>setTimeout(s,RM.matches?100:1400))]);
@@ -54,22 +54,3 @@ async function artSet(id,el){try{await api("/admin/artist",{method:"POST",body:J
 const _djOpen=djOpen;djOpen=async function(){await _djOpen();const q=$("#djq");if(q&&!$("#djmsg"))q.insertAdjacentHTML("beforebegin",`<input id="djmsg" maxlength="60" placeholder="💌 ข้อความอุทิศเพลง (ไม่บังคับ, 60 ตัวอักษร)"><div class="m" style="text-align:right;margin:-6px 0 6px"><span id="djmc">0</span>/60 · จะวิ่งบนจอทุกคนตอนเพลงเล่น</div>`),$("#djmsg").oninput=e=>$("#djmc").textContent=e.target.value.length};
 // dedication marquee while the dedicated song is playing
 setInterval(()=>{const s=typeof PLS!="undefined"&&PLS.length&&PLS[PLI],m=s&&s.msg;let w=$("#dedi");if(m&&!document.hidden){if(!w){w=document.createElement("div");w.id="dedi";w.innerHTML="<span></span>";document.body.appendChild(w)}const t=`💌 ${m} · 🎵 ${s.title}`;if(w._t!=t){w._t=t;w.firstChild.textContent=t}}else if(w)w.remove()},2000);
-// weekly recap card (canvas -> share/save)
-function ldImg(src){return new Promise(r=>{if(!src)return r(null);const i=new Image();i.crossOrigin="anonymous";i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
-async function recap(){if(!tok)return go("me");sheet('<p class="m">กำลังสร้างการ์ด...</p>');$("#sheet .hd b").textContent="📊 สรุปสัปดาห์ของฉัน";const j=await api("/recap").catch(()=>null);if(!j)return;
- await document.fonts?.load?.('700 64px Prompt').catch(()=>{});const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d"),F_="Prompt, sans-serif";
- const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#2a0b5e");g.addColorStop(.55,"#7a1a8c");g.addColorStop(1,"#ff2fb3");x.fillStyle=g;x.fillRect(0,0,W,H);
- const [logo,best]=await Promise.all([ldImg(API+"/icons/logo-splash.png"),ldImg(j.best?thumbUrl(j.best.fid,800):null)]);
- if(logo){const lw=300,lh=lw*logo.height/logo.width;x.drawImage(logo,W/2-lw/2,40,lw,lh)}x.textAlign="center";x.fillStyle="#fff";
- const end=new Date(Date.now()+BKO),st=new Date(end-6*864e5),fd=d=>d.getUTCDate()+"/"+(d.getUTCMonth()+1);x.font=`700 58px ${F_}`;x.fillText("สรุปสัปดาห์ของฉัน",W/2,330);x.font=`400 34px ${F_}`;x.fillText(`${j.name} · ${fd(st)}–${fd(end)}`,W/2,384);
- const box=(bx,by,bw,bh,ic,v,l)=>{x.fillStyle="rgba(255,255,255,.14)";x.beginPath();x.roundRect?x.roundRect(bx,by,bw,bh,28):x.rect(bx,by,bw,bh);x.fill();x.fillStyle="#fff";x.font=`700 60px ${F_}`;x.fillText(ic+" "+v,bx+bw/2,by+bh/2+8);x.font=`400 30px ${F_}`;x.fillStyle="rgba(255,255,255,.85)";x.fillText(l,bx+bw/2,by+bh/2+52)};
- box(60,430,465,170,"❤️",nf(j.given),"หัวใจที่ให้ไป");box(555,430,465,170,"💖",nf(j.received),"หัวใจที่ได้รับ");
- box(60,630,465,170,"🏅",j.ra?"#"+j.ra:"–",j.amph?"อันดับใน อ."+j.amph:"อันดับในอำเภอ");box(555,630,465,170,"🏆",j.rp?"#"+j.rp:"–",j.prov?"อันดับใน จ."+j.prov:"อันดับในจังหวัด");
- if(best){const s=380,bx=W/2-s/2,by=840;x.save();x.beginPath();x.roundRect?x.roundRect(bx,by,s,s,30):x.rect(bx,by,s,s);x.clip();const r=Math.max(s/best.width,s/best.height);x.drawImage(best,bx+(s-best.width*r)/2,by+(s-best.height*r)/2,best.width*r,best.height*r);x.restore();
-  x.font=`700 34px ${F_}`;x.fillStyle="#fff";x.fillText(`โพสต์เด่น · ❤️ ${nf(j.best.hearts)}`,W/2,by+s+48)}else{x.font=`400 36px ${F_}`;x.fillText(`🦸 ฮีโร่ ${j.hero} ครั้ง · 🔥 ติดกัน ${j.streak} วัน`,W/2,1000)}
- x.font=`700 30px ${F_}`;x.fillStyle="#ffd54a";x.fillText("เล่น TopTop ด้วยกัน 👉 teacherkanitsorn-coder.github.io/toptop",W/2,H-40);
- const blob=await new Promise(r=>c.toBlob(r,"image/png")),url=URL.createObjectURL(blob);window.RCB=blob;
- $("#sheet .sbd").innerHTML=`<img src="${url}" class="rcimg" alt="recap"><div class="funb"><button class="btn" onclick="recapShare()">📤 แชร์</button><a class="btn o" href="${url}" download="toptop-recap.png">💾 บันทึกรูป</a></div><p class="m">แชร์ไป Facebook, LINE หรือ Instagram ได้จากปุ่มแชร์</p>`}
-async function recapShare(){const f=new File([RCB],"toptop-recap.png",{type:"image/png"}),d={files:[f],title:"สรุปสัปดาห์ TopTop",text:"สรุปสัปดาห์ของฉันบน TopTop ❤️ มาเล่นด้วยกัน!",url:"https://teacherkanitsorn-coder.github.io/toptop/"};
- try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share(d);else if(navigator.share)await navigator.share({title:d.title,text:d.text,url:d.url});else{const a=document.createElement("a");a.href=URL.createObjectURL(RCB);a.download="toptop-recap.png";a.click()}}catch(e){}}
-if(tok&&new Date(Date.now()+BKO).getUTCDay()==0){const wk=Math.floor((Date.now()+BKO)/864e5);if(ls.get("tt_recap",0)!=wk){ls.set("tt_recap",wk);setTimeout(()=>toast("📊 สรุปสัปดาห์ของคุณพร้อมแล้ว! ดูได้ที่หน้าโปรไฟล์"),4000)}}
