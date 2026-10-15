@@ -53,55 +53,65 @@ function detect(url){let u;try{u=new URL(url)}catch(e){return {platform:"link"}}
  return {platform:"link"}}
 const PL={youtube:"YouTube",tiktok:"TikTok",instagram:"Instagram",facebook:"Facebook",mp4:"วิดีโอ",link:"ลิงก์"};
 // ---------- data ----------
-async function loadVideos(){const yt=await fetch("videos.json?"+Date.now()).then(r=>r.json());
- let up=[];if(API)up=(await api("/clips").catch(()=>[])).map(c=>{const d=detect(c.url);return d.platform=="youtube"?{...c,...d,kind:d.vertical?"short":"video",artist:c.artist}:{...c,...d,kind:"link"}});
- const sh=yt.filter(v=>v.kind=="short"),lg=yt.filter(v=>v.kind!="short"),out=[];let a=0,b=0,u=0;
- while(a<sh.length||b<lg.length||u<up.length){if(u<up.length)out.push(up[u++]);for(let k=0;k<3&&a<sh.length;k++)out.push(sh[a++]);if(b<lg.length)out.push(lg[b++])}
- V=out.map(v=>({...v,artist:v.artist||artistOf(v.title)}))}
+async function loadVideos(){let up=[];if(API)up=(await api("/clips").catch(()=>[])).map(c=>{const d=detect(c.url);return d.platform=="youtube"?{...c,...d,kind:d.vertical?"short":"video",artist:c.artist}:{...c,...d,kind:"link"}});
+ V=up.map(v=>({...v,artist:v.artist||artistOf(v.title||"")}))}
 // ---------- feed ----------
 function clipEl(v,i){const d=document.createElement("section");d.className="clip";d.dataset.i=i;d.dataset.id=v.id;
  d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.url)}" target="_blank" rel="noopener">เปิดลิงก์</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><button class="mute"></button>
  <div class="side"><div class="av">${esc(v.artist[0])}</div>
  <button class="sp">${I("hearts")}<b class="ns">0</b><small>หัวใจรัว</small></button>
  <button class="cmb">${I("chat")}<b class="nc">0</b><small>ความเห็น</small></button>
- <button class="sh">${I("share")}<small>แชร์</small></button>
- <div class="pts"><b class="np">0</b><small>วิวม่วน</small></div></div>
- <div class="meta"><div class="ar">@${esc(v.artist)}</div><div class="ti">${esc(v.title)}</div><div class="m">${I("music")}${v.url?"คลิปจากศิลปิน · "+PL[v.platform]:"พอดีม่วน STUDIO"}</div></div>`;
+ <button class="sh">${I("share")}<small>แชร์</small></button></div>
+ <div class="meta"><div class="ar" onclick="artistPage(this.dataset.a)" data-a="${esc(v.artist)}">@${esc(v.artist)}</div><div class="ti">${esc(v.title)}</div><div class="m">${I("music")}${v.url?"คลิปจากศิลปิน · "+PL[v.platform]:"พอดีม่วน STUDIO"}</div></div>`;
  const tp=d.querySelector(".tap");let pd=null;tp.addEventListener("pointerdown",e=>{pd={x:e.clientX,y:e.clientY,t:Date.now()}});tp.addEventListener("pointercancel",()=>pd=null);tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)onTap(d,v,e);pd=null});tp.addEventListener("dblclick",e=>e.preventDefault());
  const sp=d.querySelector(".sp");sp.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=sp.getBoundingClientRect();heart(d,v,{clientX:r.left+r.width/2-40+Math.random()*30,clientY:r.top})},{passive:false});sp.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
  d.querySelector(".cmb").onclick=()=>openCm(v);d.querySelector(".sh").onclick=()=>share(v);const mb=d.querySelector(".mute");mb.addEventListener("pointerdown",e=>e.stopPropagation());mb.onclick=e=>{e.stopPropagation();setMute(!muted)};return d}
-function paint(d){const s=st(d.dataset.id);d.querySelector(".ns").textContent=nf(s.spam);d.querySelector(".nc").textContent=nf(s.cm);d.querySelector(".np").textContent=nf(s.pts);}
+function paint(d){const s=st(d.dataset.id);d.querySelector(".ns").textContent=nf(s.spam);d.querySelector(".nc").textContent=nf(s.cm)}
 const paintAll=()=>document.querySelectorAll(".clip").forEach(paint);
 const ytCmd=(f,fn)=>f?.contentWindow?.postMessage(JSON.stringify({event:"command",func:fn,args:[]}),"*");
-// Only the current clip and the next one hold a player; the rest show thumbnails.
-// The next clip is preloaded paused; when it scrolls in we just send playVideo (fast start). Always starts muted
-// (browser autoplay rule) and is unmuted right away if the user has unmuted before.
-const ytSrc=(v,auto)=>`https://www.youtube.com/embed/${yv(v)}?autoplay=${auto?1:0}&mute=1&playsinline=1&loop=1&playlist=${yv(v)}&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-function ensurePlayer(d,auto){const v=V[d.dataset.i],m=d.querySelector(".media");if(m.querySelector("iframe,video"))return false;
- if(v.kind=="link"&&v.embed){const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;clipboard-write";f.src=v.embed;m.querySelector(".lcard")?.remove();m.appendChild(f);return true}
- if(v.kind=="link"&&v.platform=="link")return false;
- if(v.kind=="link"){const el=document.createElement("video");el.src=v.url;el.loop=el.playsInline=true;el.muted=true;el.preload="auto";el.autoplay=auto;el.onplay=()=>{if(cur?.d==d)playing=true};el.onpause=()=>{if(cur?.d==d)playing=false};
-  el.ontimeupdate=()=>{if(cur?.d==d&&el.duration&&el.currentTime>el.duration-1.2)W.done=true};m.appendChild(el);return true}
- const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen";f.src=ytSrc(v,auto);
- f.onload=()=>{f.contentWindow.postMessage('{"event":"listening","id":1}',"*");if(cur?.d==d)startPlay(d)};m.appendChild(f);return true}
-function startPlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video");
- if(f){ytCmd(f,"playVideo");if(!muted)setTimeout(()=>{ytCmd(f,"unMute")},150)}
- if(vd){vd.muted=muted;vd.play().catch(()=>{vd.muted=true;vd.play().catch(()=>{})})}}
-function stopPlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video");if(f){ytCmd(f,"mute");ytCmd(f,"pauseVideo")}if(vd)vd.pause()}
+// ---------- iOS-first playback: ONE persistent YouTube player (never re-created) ----------
+// It sits fixed behind the feed; the current clip becomes transparent over it once the scroll settles.
+// Swipes only send loadVideoById (no new iframe = fast start, no iOS autoplay re-checks). Link clips (TikTok/FB/IG/mp4) mount in-clip.
+const isYT=v=>v.kind!="link";let YTP=null,plReady=false,plVid=null,started=sessionStorage.ym_started=="1";
+function plEl(){if(YTP)return YTP;const w=document.createElement("div");w.id="player";w.innerHTML='<div class="pm"></div>';document.body.insertBefore(w,document.body.firstChild);
+ const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;picture-in-picture";f.setAttribute("playsinline","");
+ f.src=`https://www.youtube.com/embed/${yv(cur.v)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+ plVid=yv(cur.v);f.onload=()=>{f.contentWindow.postMessage('{"event":"listening","id":1}',"*");plReady=true;if(!muted&&started)ytCmd(f,"unMute");ytCmd(f,"playVideo")};
+ w.firstChild.appendChild(f);YTP=f;return f}
+const plCmd=(fn,args=[])=>YTP?.contentWindow?.postMessage(JSON.stringify({event:"command",func:fn,args}),"*");
+function plShow(on){const w=$("#player");if(w)w.classList.toggle("on",on&&!!cur&&isYT(cur.v));document.querySelectorAll(".clip.live").forEach(c=>c.classList.remove("live"));if(on&&cur&&isYT(cur.v))cur.d.classList.add("live")}
+function plLoad(v){const id=yv(v);if(!YTP){plEl();$("#player").firstChild.classList.toggle("wide",v.kind=="video");return}$("#player").firstChild.classList.toggle("wide",v.kind=="video");if(plVid!=id){plVid=id;plCmd("loadVideoById",[{videoId:id,startSeconds:0}])}else{plCmd("seekTo",[0,true])}
+ plCmd("playVideo");if(!muted&&started)setTimeout(()=>plCmd("unMute"),120)}
+function ensurePlayer(d,auto){const v=V[d.dataset.i],m=d.querySelector(".media");if(isYT(v)||m.querySelector("iframe,video"))return false;
+ if(v.embed){const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen;clipboard-write";f.src=v.embed;m.querySelector(".lcard")?.remove();m.appendChild(f);return true}
+ if(v.platform=="link")return false;
+ const el=document.createElement("video");el.src=v.url;el.loop=true;el.playsInline=true;el.setAttribute("playsinline","");el.muted=true;el.preload="auto";el.autoplay=auto;
+ el.onplay=()=>{if(cur?.d==d)playing=true};el.onpause=()=>{if(cur?.d==d)playing=false};el.ontimeupdate=()=>{if(cur?.d==d&&el.duration&&el.currentTime>el.duration-1.2)W.done=true};m.appendChild(el);return true}
+function startPlay(d){const vd=d.querySelector("video");if(vd){vd.muted=muted||!started;vd.play().catch(()=>{vd.muted=true;vd.play().catch(()=>{})})}}
+function stopPlay(d){const vd=d.querySelector("video");if(vd)vd.pause()}
 function mount(d){if(cur?.d==d)return;sendWatch();if(cur)stopPlay(cur.d);const v=V[d.dataset.i];cur={v,d};playing=false;W={vid:v.id,secs:0,done:false};
  const nx=d.nextElementSibling;ringReset(v.id);
  document.querySelectorAll(".clip .media iframe,.clip .media video").forEach(x=>{const c=x.closest(".clip");if(c!=d&&c!=nx)x.remove()});
- if(!ensurePlayer(d,true))startPlay(d);
- if(nx)ensurePlayer(nx,false);
- paintMute();
+ if(isYT(v)){plLoad(v);plShow(true)}else{plCmd("pauseVideo");plShow(false);if(!ensurePlayer(d,true))startPlay(d)}
+ if(nx&&!isYT(V[nx.dataset.i]))ensurePlayer(nx,false);
+ paintMute();if(!started)tapToStart();
  const i=+d.dataset.i;loadStats(V.slice(i,i+4).map(x=>x.id));history.replaceState(null,"","#v="+v.id+(location.hash.match(/ref=\w+/)?"&"+location.hash.match(/ref=\w+/)[0]:""))}
-addEventListener("message",e=>{if(!/youtube/.test(e.origin))return;const cf=cur?.d.querySelector("iframe");if(!cf||e.source!==cf.contentWindow)return;try{const j=JSON.parse(e.data),inf=j.info||{};
- if(inf.playerState!==undefined)playing=inf.playerState==1,inf.playerState==0&&(W.done=true);
+// hide the fixed player while the finger moves the feed; reveal when snapped
+let scT=null;function onFeedScroll(){if($("#player")?.classList.contains("on"))plShow(false);clearTimeout(scT);scT=setTimeout(()=>{if(cur&&Math.abs(cur.d.getBoundingClientRect().top)<4)plShow(true)},110)}
+addEventListener("message",e=>{if(!/youtube/.test(e.origin)||!YTP||e.source!==YTP.contentWindow)return;if(!cur||!isYT(cur.v))return;try{const j=JSON.parse(e.data),inf=j.info||{};
+ if(inf.playerState!==undefined){playing=inf.playerState==1;if(inf.playerState==0){W.done=true;plCmd("seekTo",[0,true]);plCmd("playVideo")}}
  if(inf.currentTime&&inf.duration&&inf.currentTime>inf.duration-1.5)W.done=true}catch(_){}});
 // count only while visible + playing + feed shown
 setInterval(()=>{if(cur&&playing&&!document.hidden&&$("#feed").style.display!="none"&&$("#promo").style.display!="flex"){st(cur.v.id).pts+=10000;q("pts",cur.v.id,1);W.secs++;paint(cur.d);ringTick()}},1000);
-function paintMute(){document.querySelectorAll(".clip .mute").forEach(b=>b.innerHTML=muted?I("vol")+"<span>แตะเพื่อเปิดเสียง</span>":I("volon"))}
-function setMute(m){muted=m;ls.set("ym_muted",m);paintMute();if(!cur)return;const f=cur.d.querySelector("iframe"),vd=cur.d.querySelector("video");if(f){ytCmd(f,m?"mute":"unMute");ytCmd(f,"playVideo")}if(vd){vd.muted=m;vd.play()}}
+function paintMute(){document.querySelectorAll(".clip .mute").forEach(b=>b.innerHTML=muted||!started?I("vol")+"<span>แตะเพื่อเปิดเสียง</span>":I("volon"))}
+function setMute(m){muted=m;ls.set("ym_muted",m);if(!m)markStarted();paintMute();if(!cur)return;
+ if(isYT(cur.v)){plCmd(m?"mute":"unMute");plCmd("playVideo")}else{const vd=cur.d.querySelector("video");if(vd){vd.muted=m;vd.play()}}}
+// one-time tap-to-start (iOS needs a real tap before sound). Each app launch/session once; the promo tap also counts.
+function markStarted(){started=true;sessionStorage.ym_started="1";$("#tts")?.remove()}
+function startWithSound(){markStarted();muted=false;ls.set("ym_muted",false);paintMute();if(cur&&isYT(cur.v)){plCmd("unMute");plCmd("playVideo")}else if(cur){startPlay(cur.d)}}
+function tapToStart(){if(started||$("#tts")||$("#promo").style.display=="flex")return;const t=document.createElement("div");t.id="tts";
+ t.innerHTML=`<img src="logo.svg" alt=""><div class="pl">${I("play","f")}</div><b>แตะเพื่อเริ่มดู</b><span>พร้อมเสียง</span>`;
+ t.addEventListener("click",e=>{e.stopPropagation();startWithSound()});document.body.appendChild(t)}
 // single tap = pause/play (or unmute first time); double+ tap = หัวใจรัว
 // taps on the transparent overlay above the player = หัวใจรัว only (no pause). Sound is the mute button.
 function onTap(d,v,e){heart(d,v,{clientX:e.clientX,clientY:e.clientY})}
@@ -175,26 +185,26 @@ $("#cmf").onsubmit=async e=>{e.preventDefault();if(!API)return;if(!tok)return ga
 async function delCm(id){await api("/admin/comment",{method:"DELETE",body:JSON.stringify({id})});openCm(cmV)}
 $("#cmx").innerHTML=I("x");$("#cmx").onclick=()=>$("#cm").classList.remove("on");
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.55&&$("#feed").style.display!="none")mount(e.target)}),{root:$("#feed"),threshold:[.55]});
-function buildFeed(start){const f=$("#feed");f.innerHTML="";V.forEach((v,i)=>{const d=clipEl(v,i);f.appendChild(d);io.observe(d)});if(start>0)f.children[start].scrollIntoView()}
+function buildFeed(start){const f=$("#feed");if(!f.dataset.sl){f.dataset.sl=1;f.addEventListener("scroll",onFeedScroll,{passive:true})}f.innerHTML="";if(!V.length){cur=null;plShow(false);f.innerHTML=`<div class="empty"><img src="logo.svg" alt=""><h2>ยังไม่มีคลิป</h2><p>ศิลปินกำลังจะมาเร็วๆ นี้</p></div>`;return}V.forEach((v,i)=>{const d=clipEl(v,i);f.appendChild(d);io.observe(d)});if(start>0)f.children[start].scrollIntoView()}
 // ---------- promo: top trending, 10s ----------
-async function promo(){let t=null;try{t=(await fetch("top.json?"+Date.now()).then(r=>r.json()))[0]}catch(e){}
+async function promo(){if(!V.length)return;let t=null;
  if(API)try{const x=(await api("/top"))[0];if(x)t={id:x.vid,points:x.pts}}catch(e){}
  const v=t&&V.find(x=>x.id==t.id)||V[0];if(!v)return;const p=$("#promo");let n=10;
  p.innerHTML=`<div class="pbg" style="background-image:url('${hq(yv(v))}')"></div><div class="pg"></div><div class="x"><b id="pn">10</b><span>${I("x")}</span></div>
- <div class="pin"><span class="tag">มาแรง อันดับ 1</span><h1>${esc(v.title)}</h1><div class="m" style="color:#ddd">@${esc(v.artist)} · วิวม่วน ${nf(t?.viewmuan||st(v.id).pts)}</div>
+ <div class="pin"><span class="tag">มาแรง อันดับ 1</span><h1>${esc(v.title)}</h1><div class="m" style="color:#ddd">@${esc(v.artist)}</div>
  <button class="btn" style="margin-top:18px;display:inline-flex;gap:8px;align-items:center" id="pw">${I("play").replace('class="i ','class="i f ').replace("stroke:#fff","")}ดูเลย</button><div class="bar"><i id="pb"></i></div></div>`;
  p.querySelector("#pw svg").style.cssText="stroke:#000;fill:#000;width:16px;height:16px";
  p.style.display="flex";requestAnimationFrame(()=>{$("#pb").style.transition="width 10s linear";$("#pb").style.width="100%"});
- const close=go2=>{clearInterval(T);p.style.display="none";if(go2)openClip(v.id)};
+ const close=(go2,gesture)=>{clearInterval(T);p.style.display="none";if(gesture)startWithSound();if(go2)openClip(v.id);if(!started)tapToStart()};
  const T=setInterval(()=>{n--;$("#pn").textContent=n;if(n<=0)close(false)},1000);
- p.querySelector(".x").onclick=e=>{e.stopPropagation();close(false)};p.onclick=()=>close(true)}
+ p.querySelector(".x").onclick=e=>{e.stopPropagation();close(false,true)};p.onclick=()=>close(true,true)}
 // ---------- pages ----------
 const head=(t,s)=>`<h2>${t}</h2><div class="rule"></div>${s?`<p class="m">${s}</p>`:""}`;
 const rowHtml=(v,i,lab)=>`<a class="row" onclick="openClip('${v.id}')"><div class="rk">${i+1}</div><img src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'"><div class="t">${esc(v.title)}<div class="m">@${esc(v.artist)}${lab?" · "+lab:""}</div></div></a>`;
-async function trend(){const p=$("#p-trend");p.innerHTML=head("มาแรง","จัดอันดับด้วยวิวม่วน · ฟัง 1 วินาที = 10,000 วิว")+'<p class="m">กำลังโหลด...</p>';
+async function trend(){const p=$("#p-trend");p.innerHTML=head("มาแรง")+'<p class="m">กำลังโหลด...</p>';
  if(API){const t=await api("/top").catch(()=>[]);t.forEach(x=>Object.assign(st(x.vid),x,{pts:x.pts,loaded:1}))}else await loadStats(V.slice(0,60).map(v=>v.id));
  const L=V.filter(v=>st(v.id).pts>0).sort((a,b)=>st(b.id).pts-st(a.id).pts).slice(0,50);
- p.innerHTML=head("มาแรง","จัดอันดับด้วยวิวม่วน · ฟัง 1 วินาที = 10,000 วิว")+(L.map((v,i)=>rowHtml(v,i,"วิวม่วน "+nf(st(v.id).pts))).join("")||'<div class="note">ยังไม่มีข้อมูล</div>')}
+ p.innerHTML=head("มาแรง")+(L.map((v,i)=>rowHtml(v,i,"หัวใจรัว "+nf(st(v.id).spam))).join("")||'<div class="note">ยังไม่มีข้อมูล</div>')}
 let boardTab="artist";
 async function board(){const p=$("#p-board"),tabs=`<div>${[["artist","ศิลปิน"],["fans","แฟนแต้มสะสม"],["hearts","ซุปเปอร์หัวใจ"]].map(([k,n])=>`<span class="chip ${k==boardTab?"on":""}" onclick="boardTab='${k}';board()">${n}</span>`).join("")}</div>`;
  p.innerHTML=head("อันดับ","หัวใจรัว = กดรัวได้ไม่จำกัด รวมที่ศิลปินกดเองด้วย")+tabs+'<p class="m">กำลังโหลด...</p>';
@@ -204,7 +214,12 @@ async function board(){const p=$("#p-board"),tabs=`<div>${[["artist","ศิล�
  await loadStats(V.slice(0,API?V.length:60).map(v=>v.id));const A={};
  V.forEach(v=>{if(!S[v.id]?.loaded)return;const a=A[v.artist]||(A[v.artist]={pts:0,spam:0}),s=st(v.id);a.pts+=s.pts;a.spam+=s.spam});
  p.innerHTML=head("อันดับ","หัวใจรัว = กดรัวได้ไม่จำกัด รวมที่ศิลปินกดเองด้วย")+tabs+
- Object.entries(A).sort((a,b)=>b[1].pts-a[1].pts).map(([n,a],i)=>`<div class="row"><div class="rk">${i+1}</div><div class="av">${esc(n[0])}</div><div class="t">${esc(n)}<div class="m">วิวม่วน ${nf(a.pts)} · หัวใจรัว ${nf(a.spam)}</div></div></div>`).join("")}
+ Object.entries(A).sort((a,b)=>b[1].pts-a[1].pts).map(([n,a],i)=>`<a class="row" data-a="${esc(n)}" onclick="artistPage(this.dataset.a)"><div class="rk">${i+1}</div><div class="av">${esc(n[0])}</div><div class="t">${esc(n)}<div class="m">หัวใจรัว ${nf(a.spam)}</div></div></a>`).join("")}
+async function artistPage(n){if(!n)return;let o=$("#ap");if(!o){o=document.createElement("div");o.id="ap";document.body.appendChild(o)}
+ const L=V.filter(v=>v.artist==n);await loadStats(L.map(v=>v.id)).catch(()=>{});const tot=L.reduce((s,v)=>s+st(v.id).pts,0),hs=L.reduce((s,v)=>s+st(v.id).spam,0);
+ o.innerHTML=`<div class="aph"><button class="btn o" onclick="$('#ap').style.display='none'">${I("x")}</button></div><div class="apc"><div class="av big">${esc(n[0])}</div><h2>${esc(n)}</h2><div class="apn"><div><b>${nf(tot)}</b><small>วิวม่วนรวม</small></div><div><b>${nf(hs)}</b><small>หัวใจรัว</small></div><div><b>${L.length}</b><small>คลิป</small></div></div><div class="rule"></div>`+
+ (L.sort((a,b)=>st(b.id).pts-st(a.id).pts).map((v,i)=>rowHtml(v,i,"วิวม่วน "+nf(st(v.id).pts))).join("")||'<p class="m">ยังไม่มีคลิป</p>')+`</div>`;
+ o.querySelectorAll("a.row").forEach(r=>r.addEventListener("click",()=>o.style.display="none"));o.style.display="block"}
 const soon=(t,s)=>`<div class="soon"><span class="badge">เร็วๆ นี้</span><h2>${t}</h2><p>${s}</p></div>`;
 async function rewards(){const p=$("#p-rewards");
  if(!API){p.innerHTML=head("ของรางวัล")+soon("แลกของรางวัลซุปเปอร์แฟน","ดูคลิปจนจบ สะสมแต้มสะสม แชร์คลิปให้เพื่อนเพื่อรับซุปเปอร์หัวใจ แล้วนำมาแลกของที่ระลึกจากค่ายพอดีม่วน")+
@@ -257,6 +272,8 @@ async function pinLink(){try{await api("/pin-link",{method:"POST",body:JSON.stri
 async function logout(){await api("/logout",{method:"POST"}).catch(()=>{});tok=null;me=null;localStorage.removeItem("ym_tok");mePage()}
 async function addLink(){const url=$("#ul").value.trim(),s=$("#us");if(!/^https?:\/\//.test(url))return s.textContent="ลิงก์ไม่ถูกต้อง";
  try{await api("/clips",{method:"POST",body:JSON.stringify({url,title:$("#ut").value,platform:detect(url).platform})});s.textContent="เพิ่มคลิปแล้ว";$("#ul").value="";$("#ut").value="";await loadVideos();buildFeed(0)}catch(e){s.textContent="ผิดพลาด: "+e.message}}
+async function admAddClip(){const url=$("#aul").value.trim(),s=$("#aus");if(!/^https?:\/\//.test(url))return s.textContent="ลิงก์ไม่ถูกต้อง";
+ try{await api("/clips",{method:"POST",body:JSON.stringify({url,title:$("#aut").value,artist:$("#aua").value,platform:detect(url).platform})});s.textContent="เพิ่มคลิปแล้ว";$("#aul").value="";$("#aut").value="";await loadVideos();buildFeed(0);admin()}catch(e){s.textContent="ผิดพลาด: "+e.message}}
 async function admin(){const a=$("#adm"),[pins,mem,rw,rd,cl]=await Promise.all(["/admin/pins","/admin/members","/rewards","/admin/redemptions","/clips"].map(x=>api(x).catch(()=>[])));
  a.innerHTML=`<h3>แอดมิน · รหัส PIN ศิลปิน</h3>${pins.map(x=>`<div class="row"><div class="t">${esc(x.name)}<div class="m">PIN ${esc(x.pin)} (ใช้ได้ครั้งเดียว)</div></div><button class="btn o" onclick="adm('/admin/pins','DELETE',{pin:'${esc(x.pin)}'})">ลบ</button></div>`).join("")}
  <select id="sn">${ROSTER.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn" onclick="adm('/admin/pins','POST',{name:$('#sn').value})">สร้าง PIN</button>
@@ -267,7 +284,7 @@ async function admin(){const a=$("#adm"),[pins,mem,rw,rd,cl]=await Promise.all([
  <button class="btn" onclick="adm('/admin/rewards','POST',{name:$('#nn').value,image:$('#ni').value,cost:$('#nc').value,stock:$('#ns').value})">เพิ่มของรางวัล</button>
  <h3>คำขอแลก</h3>${rd.map(r=>`<div class="row"><div class="t">${esc(r.reward)} · ${esc(r.name)} (${esc(r.login)})<div class="m">${esc(r.address)} · ${esc(r.status)}</div>
   <div>${["approved","shipped","rejected"].map(s=>`<span class="chip" onclick="adm('/admin/redemptions','PUT',{id:${+r.id},status:'${s}'})">${({approved:"อนุมัติ",shipped:"จัดส่งแล้ว",rejected:"ปฏิเสธ+คืนแต้ม"})[s]}</span>`).join("")}</div></div></div>`).join("")||'<p class="m">ไม่มี</p>'}
- <h3>คลิปที่อัปโหลด</h3>${cl.map(x=>`<div class="row"><div class="t">${esc(x.title)}<div class="m">@${esc(x.artist)}</div></div><button class="btn o" onclick="adm('/admin/clip','DELETE',{id:'${esc(x.id)}'})">ลบ</button></div>`).join("")||'<p class="m">ยังไม่มี</p>'}`}
+ <h3>เพิ่มคลิปจากลิงก์ (ให้เครดิตศิลปิน)</h3><input id="aul" placeholder="วางลิงก์ YouTube / TikTok / Facebook / IG / mp4"><input id="aut" placeholder="ชื่อคลิป (ไม่บังคับ)"><select id="aua">${ROSTER.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn" onclick="admAddClip()">เพิ่มคลิป</button><p class="m" id="aus"></p><h3>คลิปทั้งหมด</h3>${cl.map(x=>`<div class="row"><div class="t">${esc(x.title)}<div class="m">@${esc(x.artist)}</div></div><button class="btn o" onclick="adm('/admin/clip','DELETE',{id:'${esc(x.id)}'})">ลบ</button></div>`).join("")||'<p class="m">ยังไม่มี</p>'}`}
 async function adm(p,m,b){if(m=="DELETE"&&!confirm("ยืนยัน?"))return;try{const j=await api(p,{method:m,body:JSON.stringify(b)});if(j.pin)alert("PIN ใหม่: "+j.pin);admin()}catch(e){toast(e.message)}}
 const saveRw=id=>adm("/admin/rewards","PUT",{id,name:$("#rn"+id).value,image:$("#ri"+id).value,cost:$("#rc"+id).value,stock:$("#rs"+id).value,active:$("#ra"+id).checked});
 // ---------- superfan milestone ----------
@@ -301,7 +318,7 @@ const NAV={home:["home","หน้าแรก"],trend:["fire","มาแรง"
 document.querySelectorAll("nav a").forEach(a=>{a.innerHTML=I(NAV[a.dataset.p][0])+NAV[a.dataset.p][1];a.onclick=()=>go(a.dataset.p)});
 function go(p){if(API&&!tok&&p!="me")p="me";document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.p==p));document.querySelectorAll(".page").forEach(x=>x.style.display="none");
  $("#feed").style.display=p=="home"?"":"none";
- if(p!="home"){endBoost();$("#wr")&&($("#wr").style.display="none");document.querySelectorAll(".clip .media iframe,.clip .media video").forEach(x=>x.remove());cur=null;$("#p-"+p).style.display="block";({trend,board,rewards,me:mePage})[p]()}
+ if(p!="home"){endBoost();plCmd("pauseVideo");plShow(false);$("#wr")&&($("#wr").style.display="none");document.querySelectorAll(".clip .media iframe,.clip .media video").forEach(x=>x.remove());cur=null;$("#p-"+p).style.display="block";({trend,board,rewards,me:mePage})[p]()}
  else{const d=[...document.querySelectorAll(".clip")].find(c=>Math.abs(c.getBoundingClientRect().top)<10);d&&mount(d)}}
 (async()=>{await refreshMe();bell();sendRef();await loadVideos();const m=location.hash.match(/v=([\w-]+)/);buildFeed(m?Math.max(0,V.findIndex(v=>v.id==m[1])):0);
  if(API&&!tok)go("me");else if(!m)promo()})();
