@@ -247,10 +247,13 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 /* animated header logo */
 .lgw{position:relative;display:inline-block;height:42px;line-height:0;isolation:isolate}.lgw .logo{height:42px;width:auto;animation:lgGlow 3.2s ease-in-out infinite}
 .lgw .crn{position:absolute;height:auto;transform-origin:50% 90%;animation:crBob 2.6s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(192,64,255,.55))}
-.lgw .shn{position:absolute;inset:0;pointer-events:none;-webkit-mask:url(https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png?v=3) center/contain no-repeat;mask:url(https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png?v=3) center/contain no-repeat;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%) no-repeat;background-size:250% 100%;background-position:150% 0;animation:shine 4.5s ease-in-out infinite}
+.lgw .shn{position:absolute;inset:0;pointer-events:none;-webkit-mask:url(https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png?v=4) center/contain no-repeat;mask:url(https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png?v=4) center/contain no-repeat;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%) no-repeat;background-size:250% 100%;background-position:150% 0;animation:shine 4.5s ease-in-out infinite}
 @keyframes crBob{0%,100%{transform:translateY(0) rotate(0)}20%{transform:translateY(-1.2px) rotate(-5deg)}40%{transform:translateY(-.6px) rotate(4deg)}60%{transform:translateY(-1px) rotate(-2deg)}75%{transform:translateY(0) rotate(0)}}
 @keyframes lgGlow{0%,100%{filter:drop-shadow(0 2px 8px rgba(168,85,247,.45))}50%{filter:drop-shadow(0 2px 16px rgba(192,64,255,.85))}}
 @keyframes shine{0%,55%{background-position:150% 0}85%,100%{background-position:-60% 0}}
 @media (prefers-reduced-motion:reduce){.lgw .logo,.lgw .crn,.lgw .shn{animation:none}}
 .locf .req{color:#ff5c8a}#cgo:disabled{opacity:.45;filter:grayscale(.4)}
 #lc .lct{border-radius:50%!important}
+.arp{display:flex;gap:6px;margin:8px 0}.arp select{flex:1;min-width:0;height:40px;border-radius:12px;padding:0 8px;font:14px Prompt;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.16)}.arp select option{color:#000}
+.arh{margin:12px 0 4px;font:700 20px Prompt;background:linear-gradient(90deg,#ffd54a,#ff5cc8,#b26bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#arl h3{margin:16px 0 8px;font-size:16px}

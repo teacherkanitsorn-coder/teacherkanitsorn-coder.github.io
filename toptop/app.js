@@ -41,7 +41,7 @@ function postEl(x,i){const d=document.createElement("section");d.className="post
  <div class="timer glass">${I("clock")}<small>หายไปใน</small><span class="tl">--:--</span></div>
  <div class="side"><button class="avb${x.uid!=me?.id&&!FOL.has(x.uid)?" ring":""}">${avHtml({name:x.name,avatar:x.avatar})}${tok&&x.uid!=me?.id&&!FOL.has(x.uid)?`<i class="fol fu${x.uid}" aria-label="ติดตาม"><svg viewBox="0 0 24 24"><path d="M4 17l-1-9 5 4 4-7 4 7 5-4-1 9z" fill="#fff"/></svg><b>+</b></i>`:""}</button><button class="sp"><div class="bub">${I("heart","f")}</div><b class="nh">${nf(x.hearts)}</b>หัวใจ</button>
  <button class="cmb"><div class="bub glass">${I("chat")}</div><b>${nf(x.cm)}</b>ความเห็น</button><button class="shb"><div class="bub glass">${I("share")}</div><b></b>ขอหัวใจ</button><button class="asb${AS.on?" on":""}" aria-label="เลื่อนอัตโนมัติ"><div class="bub glass"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6l5 5 5-5M7 13l5 5 5-5"/></svg></div><b class="ass">${AS.on?AS.sec+" วิ":"อัตโนมัติ"}</b></button></div>
- <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}${x.prov?`<div class="loc">📍 ${esc(locText(x))}${x.arank&&x.arank<=10?`<span class="arb">🏆 #${x.arank} ของ จ.${esc(x.prov)}</span>`:""}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
+ <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}${x.prov?`<div class="loc">📍 ${esc(locText(x))}${rankBadge(x)}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
  ambient(x.thumb,(a,b)=>d.querySelector(".ph img").style.setProperty("--pc",a.replace("rgb","rgba").replace(")",",.55)")));
  const tp=d.querySelector(".alb");if(x.more)tp.addEventListener("scroll",()=>{const k=Math.round(tp.scrollLeft/tp.clientWidth);d.querySelectorAll(".dots i").forEach((e,j)=>e.classList.toggle("on",j==k))},{passive:true});let pd=null;tp.addEventListener("pointerdown",e=>pd={x:e.clientX,y:e.clientY,t:Date.now()});tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)heart(d,x,e);pd=null});
  tp.addEventListener("dblclick",e=>e.preventDefault());tp.addEventListener("pointercancel",()=>pd=null);
@@ -413,15 +413,26 @@ async function locPicker(box){LOCNUDGED=0;box.innerHTML=`<div class="lh">📍 �
  const d=ls.get("tt_loc",null);if(d&&d.prov){P.value=d.prov;fa();A.value=d.amph||"";fa2();T.value=d.tamb||"";V.disabled=!T.value;V.value=d.vill||""}else fa();ok()}
 function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if(L.prov)L.amph=g("#la");if(L.amph)L.tamb=g("#lt");if(L.tamb)L.vill=g("#lv");return L}
 // ---------- area ranking ----------
-let AR={lvl:1,parent:"",trail:[]};const LV_N=["","จังหวัด","อำเภอ","ตำบล","หมู่บ้าน"];
-async function areaRank(){const p=$("#p-rank");
+// ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
+const LV_N=["ประเทศ","จังหวัด","อำเภอ","ตำบล"];let AR=null;
+function rankBadge(x){const L=(F||[]).filter(p=>p.expires>now());const nat=[...L].sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;
+ if(nat&&nat<=10&&x.hearts>0)return `<span class="arb">🏆 #${nat} ของประเทศ</span>`;
+ const pr=L.filter(p=>p.prov&&p.prov==x.prov).sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;return pr&&pr<=10&&x.hearts>0?`<span class="arb">🏆 #${pr} ของ ${x.prov==BKK?"":"จ."}${esc(x.prov)}</span>`:""}
+const areaTitle=(l,s)=>l==0?"ประเทศไทย":l==1?(s.prov==BKK?s.prov:"จ."+s.prov):l==2?`${s.prov==BKK?"เขต":"อ."}${s.amph} ${s.prov==BKK?"":"จ."}${s.prov}`:`${s.prov==BKK?"แขวง":"ต."}${s.tamb} ${s.prov==BKK?"เขต":"อ."}${s.amph}`;
+async function areaRank(){const p=$("#p-rank");TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);
+ if(!AR){const d=ls.get("tt_loc",null)||{};AR={lvl:0,prov:d.prov||"สกลนคร",amph:d.amph||"",tamb:d.tamb||""}}
+ const pv=TH.find(x=>x[0]==AR.prov),am=pv&&pv[1].find(x=>x[0]==AR.amph);if(AR.lvl>=2&&!AR.amph&&pv)AR.amph=pv[1][0][0];const am2=pv&&pv[1].find(x=>x[0]==AR.amph);if(AR.lvl>=3&&!AR.tamb&&am2)AR.tamb=am2[1][0];
+ const opt=(L,v)=>L.map(n=>`<option${n==v?" selected":""}>${esc(n)}</option>`).join("");
  p.innerHTML=`<h2>อันดับ</h2><div class="chips"><span class="chip" onclick="rankTab='live';rank()">เวลาเหลือมากสุด</span><span class="chip" onclick="rankTab='hall';rank()">Hall of Fame</span><span class="chip on">พื้นที่</span></div>
- <div class="chips sub">${[1,2,3,4].map(l=>`<span class="chip${AR.lvl==l&&!AR.parent?" on":""}" onclick="AR={lvl:${l},parent:'',trail:[]};areaRank()">${LV_N[l]}</span>`).join("")}</div>
- ${AR.parent?`<div class="crumb"><a onclick="AR.trail.pop();const t=AR.trail[AR.trail.length-1];AR.parent=t?t.key:'';AR.lvl=t?t.lvl+1:1;areaRank()">← ย้อนกลับ</a> · ${AR.trail.map(t=>esc(t.name)).join(" › ")}</div>`:""}
- <p class="m">รวมหัวใจทุกโพสต์ในพื้นที่ (นับรวมรูปที่หมดเวลาแล้ว)</p><div id="arl"><p class="m">กำลังโหลด...</p></div>`;
- const L=await api(`/areas?lvl=${AR.lvl}${AR.parent?"&parent="+encodeURIComponent(AR.parent):""}`).catch(()=>[]);
- $("#arl").innerHTML=L.map((r,i)=>{const ctx=r.key.split("|").slice(0,-1).reverse().join(" · ");return `<a class="row arow" ${AR.lvl<4?`onclick='areaDown(${JSON.stringify({key:r.key,name:r.name,lvl:AR.lvl}).replace(/'/g,"&#39;")})'`:""}><div class="rk${i==0?" c1":""}">${i+1}</div><div class="t"><div>${esc(r.name)}</div><div class="m">${esc(ctx)}${ctx?" · ":""}${nf(r.posts)} โพสต์</div></div><div class="ah">❤️ ${nf(r.hearts)}</div></a>`}).join("")||'<div class="card glass">ยังไม่มีพื้นที่ในอันดับ ลองโพสต์พร้อมใส่พื้นที่สิ!</div>'}
-function areaDown(t){AR.trail.push(t);AR.parent=t.key;AR.lvl=t.lvl+1;areaRank()}
+ <div class="chips sub">${LV_N.map((n,l)=>`<span class="chip${AR.lvl==l?" on":""}" onclick="AR.lvl=${l};areaRank()">${n}</span>`).join("")}</div>
+ ${AR.lvl?`<div class="arp">${`<select id="arp1">${opt(TH.map(x=>x[0]),AR.prov)}</select>`}${AR.lvl>=2?`<select id="arp2">${opt(pv?pv[1].map(x=>x[0]):[],AR.amph)}</select>`:""}${AR.lvl>=3?`<select id="arp3">${opt(am2?am2[1]:[],AR.tamb)}</select>`:""}</div>`:""}
+ <div class="arh">👑 ที่สุดของ${AR.lvl==0?"ประเทศไทย":" "+esc(areaTitle(AR.lvl,AR))}</div><div id="arl"><p class="m">กำลังโหลด...</p></div>`;
+ $("#arp1")&&($("#arp1").onchange=e=>{AR.prov=e.target.value;AR.amph="";AR.tamb="";areaRank()});$("#arp2")&&($("#arp2").onchange=e=>{AR.amph=e.target.value;AR.tamb="";areaRank()});$("#arp3")&&($("#arp3").onchange=e=>{AR.tamb=e.target.value;areaRank()});
+ const key=[AR.prov,AR.amph,AR.tamb].slice(0,AR.lvl).join("|"),want=JSON.stringify(AR);const j=await api(`/areatop?lvl=${AR.lvl}&key=${encodeURIComponent(key)}`).catch(()=>({posts:[],members:[],areas:[]}));if(want!=JSON.stringify(AR)||rankTab!="area")return;
+ $("#arl").innerHTML=`<h3>🔥 โพสต์ยอดนิยม</h3>${j.posts.slice(0,10).map((x,i)=>prow(x,i,nf(x.hearts)+" หัวใจ · เหลือ "+left(x.expires-now()))).join("")||'<p class="m">ยังไม่มีโพสต์ที่ยังมีชีวิตในพื้นที่นี้</p>'}
+  <h3>⭐ สมาชิกยอดนิยม</h3>${j.members.slice(0,10).map((m,i)=>`<a class="row" onclick="userPage(${m.uid})"><div class="rk${i==0?" c1":""}">${i+1}</div>${avHtml({name:m.name,avatar:m.avatar})}<div class="t"><div>${esc(m.name)}</div><div class="m">หัวใจสะสมในพื้นที่</div></div><div class="ah">❤️ ${nf(m.hearts)}</div></a>`).join("")||'<p class="m">ยังไม่มีสมาชิกได้หัวใจในพื้นที่นี้</p>'}
+  ${AR.lvl<3?`<h3>📍 อันดับ${LV_N[AR.lvl+1]}</h3>${j.areas.map((r,i)=>`<a class="row arow" onclick='areaDown(${JSON.stringify(r.key).replace(/'/g,"&#39;")})'><div class="rk${i==0?" c1":""}">${i+1}</div><div class="t"><div>${esc(r.name)}</div><div class="m">${nf(r.posts)} โพสต์</div></div><div class="ah">❤️ ${nf(r.hearts)}</div></a>`).join("")||`<p class="m">ยังไม่มีข้อมูล${LV_N[AR.lvl+1]}</p>`}`:""}`}
+function areaDown(k){const p=k.split("|");AR.lvl=p.length;AR.prov=p[0];AR.amph=p[1]||"";AR.tamb=p[2]||"";areaRank();$("#p-rank").scrollTo?.({top:0})}
 // ---------- album hint (first time a multi-photo post appears) ----------
 const AH=new Set(ls.get("tt_ahint",[]));function albHint(d,x){if(AH.has(x.id))return;const ob=new IntersectionObserver(es=>{if(!es[0].isIntersecting||es[0].intersectionRatio<.6)return;ob.disconnect();AH.add(x.id);ls.set("tt_ahint",[...AH].slice(-200));
  const h=document.createElement("div");h.className="ahint";h.innerHTML="ปัดดูรูปอื่นได้ <span>→</span>";d.querySelector(".ph").appendChild(h);setTimeout(()=>h.classList.add("bye"),2000);setTimeout(()=>h.remove(),2700)},{threshold:[.6]});ob.observe(d)}
