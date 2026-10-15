@@ -131,3 +131,8 @@ details.more{margin-top:22px;border-top:1px solid var(--ln);padding-top:8px}deta
 .pick{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:46dvh;border:1.5px dashed #fff6;border-radius:16px;margin-bottom:12px;overflow:hidden;cursor:pointer;background:#0a0a0a}
 .pick span svg{width:44px;height:44px}.pick b{font:500 18px Kanit}.pick small{color:#999}.pick video,.pick img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}.pick .chg{position:absolute;bottom:8px;background:#000a;border-radius:99px;padding:3px 10px;color:#fff}
 #cgo:disabled{opacity:.5}
+
+/* rapid-tap stability: no scroll from taps, no layout shift from counters, shake stays inside the clip */
+.side .sp,.side .sp *{touch-action:none}.side b{display:block;min-width:3.6em;text-align:center;font-variant-numeric:tabular-nums}
+#feed{overscroll-behavior:contain}.clip{overflow:hidden;contain:layout paint}.media.shake{will-change:transform}
+.clip .media video{background:#000}
