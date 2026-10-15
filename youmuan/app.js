@@ -1,7 +1,7 @@
 const API=window.YM_API||"", AB="https://abacus.jasoncameron.dev", NS="youmuan-pdm";
 const CH="UCpjChoKuoBGQ368LdINenDg";
 const ROSTER=["รำไพ แสงทอง","พร จันทพร","เมย์ จิราพร","ขวัญ พัชรี","จุ๊บแจง เจนจิรา","โชติ ณัฐชัย","นิค สะเลอปี้","วงค์ ชนะกันต์","การ์เนต สะเลอปี้","การ์ฟิวส์ สะเลอปี้"];
-const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"]/g,c=>({'&':'&','<':'<','>':'>','"':'"'}[c]));
+const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
 let V=[],S={},cur=null,me=ls.get("ym_me",null);
 const nf=n=>n>=1e9?(n/1e9).toFixed(1)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n|0);
