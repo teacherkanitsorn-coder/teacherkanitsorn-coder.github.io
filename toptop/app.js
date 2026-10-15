@@ -53,7 +53,7 @@ function buildFeed(focus){const f=$("#feed");f.innerHTML="";cur=null;
  if(!F.length){f.innerHTML=`<div class="empty"><img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-splash.png" width="168" style="filter:drop-shadow(0 12px 40px rgba(255,47,179,.45))" alt=""><h2>ยังไม่มีรูปที่ยังมีชีวิต</h2><p>โพสต์รูปแรกเลย ได้เวลาฟรี 1 ชั่วโมง<br>ให้เพื่อนกดหัวใจต่อชีวิต!</p><button class="btn" onclick="composer()">+ โพสต์รูป</button></div>`;return}
  F.forEach((x,i)=>{const d=postEl(x,i);f.appendChild(d);io.observe(d)});const k=focus?F.findIndex(x=>x.id==focus):-1;if(k>0)f.children[k].scrollIntoView();tick()}
 function tick(){const t=now();document.querySelectorAll(".post").forEach(d=>{const x=F[d.dataset.i];if(!x)return;const ms=x.expires-t;d.querySelector(".tl").textContent=ms>0?left(ms):"หมดเวลา";
- d.classList.toggle("urgent",ms>0&&ms<10*6e4);d.classList.toggle("dead",ms<=0);d.querySelector(".nh").textContent=nf(x.hearts)})}
+ d.classList.toggle("urgent",ms>0&&ms<10*6e4);{const lm=ms>0&&ms<=6e4;let w=d.querySelector(".lastmin");if(lm){if(!w){w=document.createElement("div");w.className="lastmin";w.innerHTML='<b>อีก 1 นาทีจะหายไป 💔</b><span>รัวใจช่วยต่อชีวิตหน่อย!</span><i></i>';d.querySelector(".ph").appendChild(w)}w.querySelector("i").textContent=Math.ceil(ms/1000)+" วินาที"}else if(w)w.remove()}d.classList.toggle("dead",ms<=0);d.querySelector(".nh").textContent=nf(x.hearts)})}
 setInterval(tick,1000);
 // expired photos leave the feed (owner keeps them in profile)
 setInterval(()=>{if(tab!="home")return;const dead=F.filter(x=>x.expires<=now());if(dead.length&&(!cur||cur.x.expires<=now()-4000)){loadFeed().then(()=>buildFeed(cur?.x?.expires>now()?cur.x.id:null))}},5000);
