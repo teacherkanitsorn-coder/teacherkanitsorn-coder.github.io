@@ -133,10 +133,11 @@ async function compressImage(file,max=1080,target=380e3,square=false){const bm=a
  const t=document.createElement("canvas"),tk=48/Math.max(W,H);t.width=Math.max(1,Math.round(W*tk));t.height=Math.max(1,Math.round(H*tk));t.getContext("2d").drawImage(c,0,0,t.width,t.height);
  return {blob:new File([b],"photo.jpg",{type:"image/jpeg"}),w:W,h:H,thumb:t.toDataURL("image/jpeg",.6)}}
 async function driveSend(f,onp){const g=await api("/photo/ticket",{method:"POST",body:"{}"});
- const post=b=>fetch(g.bridge,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...b,ticket:g.ticket})}).then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error=="ticket"?"ระบบอัปโหลดยังไม่อัปเดต (ติดต่อแอดมิน)":j.error);return j});
- const ini=await post({action:"init",name:f.name,size:f.size,mime:f.type});
+ const post=b=>fetch(g.bridge,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...b,ticket:g.ticket})}).then(r=>r.text()).then(t=>{try{return JSON.parse(t)}catch(e){throw Object.assign(new Error("ระบบอัปโหลดไม่ตอบ ลองใหม่"),{retry:1})}}).then(j=>{if(j.error)throw new Error(j.error=="ticket"?"ระบบอัปโหลดยังไม่อัปเดต (ติดต่อแอดมิน)":j.error);return j});
+ const post2=async(b,n=3)=>{for(let k=1;;k++){try{return await post(b)}catch(e){if(!e.retry&&!(e instanceof TypeError)||k>=n)throw e;await new Promise(r=>setTimeout(r,800*k))}}};
+ const ini=await post2({action:"init",name:f.name,size:f.size,mime:f.type});
  const r=await new Promise((ok,no)=>{const x=new XMLHttpRequest();x.open("PUT",ini.uploadUrl);x.setRequestHeader("Content-Type",f.type);x.upload.onprogress=e=>e.lengthComputable&&onp(e.loaded/e.total);x.onload=()=>{try{const j=JSON.parse(x.responseText);x.status<300?ok(j):no(new Error(j.error?.message||"อัปโหลดไม่สำเร็จ"))}catch(e){no(e)}};x.onerror=()=>no(new Error("เครือข่ายขัดข้อง"));x.send(f)});
- const fin=await post({action:"finish",id:r.id});return {...fin,uid:g.ticket.uid}}
+ const fin=await post2({action:"finish",id:r.id});return {...fin,uid:g.ticket.uid}}
 function composer(){if(!tok){toast("สมัครฟรีก่อน แล้วโพสต์ได้เลย");return go("me")}const s=$("#sheet");s.className="glass on full";let pk=null;
  s.innerHTML=`<div class="hd"><b>โพสต์รูป</b><button onclick="closeSheet()">${I("x")}</button></div><div class="bd">
   <label class="pick" for="cf" id="cpv">${I("cam")}<b>เลือกรูปจากเครื่อง</b><span class="m">รูปตัวเองหรืออะไรก็ได้ · เริ่มต้นมีชีวิต 1 ชั่วโมง</span></label><input id="cf" type="file" accept="image/*" hidden>
