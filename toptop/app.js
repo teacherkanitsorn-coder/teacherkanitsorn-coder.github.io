@@ -39,14 +39,14 @@ async function homeRefresh(){$("#newp")?.remove();const h=$('#nav a[data-p="home
 function postEl(x,i){const d=document.createElement("section");d.className="post";d.dataset.i=i;d.dataset.id=x.id;const src=media(x.fid);
  d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><img src="${src}" ${i>1?'loading="lazy"':""} decoding="async" alt=""></div><div class="tap"></div>
  <div class="timer glass">${I("clock")}<span class="tl">--:--</span><small>เหลือ</small></div>
- <div class="side"><button class="avb">${avHtml({name:x.name,avatar:x.avatar})}</button><button class="sp"><div class="bub">${I("heart","f")}</div><b class="nh">${nf(x.hearts)}</b>หัวใจ</button>
+ <div class="side"><button class="avb${x.uid!=me?.id&&!FOL.has(x.uid)?" ring":""}">${avHtml({name:x.name,avatar:x.avatar})}${tok&&x.uid!=me?.id&&!FOL.has(x.uid)?`<i class="fol fu${x.uid}" aria-label="ติดตาม"><svg viewBox="0 0 24 24"><path d="M4 17l-1-9 5 4 4-7 4 7 5-4-1 9z" fill="#fff"/></svg><b>+</b></i>`:""}</button><button class="sp"><div class="bub">${I("heart","f")}</div><b class="nh">${nf(x.hearts)}</b>หัวใจ</button>
  <button class="cmb"><div class="bub glass">${I("chat")}</div><b>${nf(x.cm)}</b>ความเห็น</button><button class="shb"><div class="bub glass">${I("share")}</div><b></b>ขอหัวใจ</button></div>
  <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
  ambient(x.thumb,(a,b)=>d.querySelector(".ph img").style.setProperty("--pc",a.replace("rgb","rgba").replace(")",",.55)")));
  const tp=d.querySelector(".tap");let pd=null;tp.addEventListener("pointerdown",e=>pd={x:e.clientX,y:e.clientY,t:Date.now()});tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)heart(d,x,e);pd=null});
  tp.addEventListener("dblclick",e=>e.preventDefault());
  const sp=d.querySelector(".sp");sp.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=sp.getBoundingClientRect();heart(d,x,{clientX:r.left+r.width/2-40+Math.random()*30,clientY:r.top})},{passive:false});sp.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
- d.querySelector(".cmb").onclick=()=>openCm(x);d.querySelector(".shb").onclick=()=>share(x);d.querySelector(".avb").onclick=()=>userPage(x.uid);d.querySelector(".nm").onclick=()=>userPage(x.uid);
+ d.querySelector(".cmb").onclick=()=>openCm(x);d.querySelector(".shb").onclick=()=>share(x);d.querySelector(".avb").onclick=()=>userPage(x.uid);const fo=d.querySelector(".fol");if(fo)fo.onclick=e=>{e.stopPropagation();feedFollow(x.uid)};d.querySelector(".nm").onclick=()=>userPage(x.uid);
  return d}
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.6){const x=F[e.target.dataset.i];if(x){cur={x,d:e.target};ambient(x.thumb,setAmb);tick()}}}),{threshold:[.6]});
 function buildFeed(focus){const f=$("#feed");f.innerHTML="";cur=null;
@@ -165,7 +165,7 @@ function composer(){if(!tok){toast("สมัครฟรีก่อน แล�
   <label class="pick" for="cf" id="cpv">${I("cam")}<b>เลือกรูปจากเครื่อง</b><span class="m">รูปตัวเองหรืออะไรก็ได้ · เริ่มต้นมีชีวิต 1 ชั่วโมง</span></label><input id="cf" type="file" accept="image/*" hidden>
   <input id="ccap" maxlength="150" placeholder="แคปชั่น (ไม่บังคับ)"><div class="prog" id="cbar" style="display:none"><i></i></div><div class="m" id="cst"></div>
   <button class="btn w" id="cgo">โพสต์เลย</button></div>`;
- $("#cf").onchange=e=>{pk=e.target.files[0];if(pk)$("#cpv").innerHTML=`<img src="${URL.createObjectURL(pk)}" alt=""><span class="chg">แตะเพื่อเปลี่ยนรูป</span>`};
+ $("#cf").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{const c=await cropEditor(f);if(!c)return;pk=c;$("#cpv").innerHTML=`<img src="${URL.createObjectURL(pk)}" alt=""><span class="chg">แตะเพื่อเลือกรูปใหม่</span>`}catch(x){$("#cst").textContent="ผิดพลาด: "+x.message}};
  $("#cgo").onclick=async()=>{const st=$("#cst"),bar=$("#cbar");if(!pk)return st.textContent="เลือกรูปก่อนนะ";const btn=$("#cgo");btn.disabled=true;bar.style.display="block";
   const prog=(l,q)=>{bar.firstChild.style.width=Math.round(q)+"%";st.textContent=l+" "+Math.round(q)+"%"};
   try{prog("กำลังเตรียมรูป",5);const c=await compressImage(pk);prog("กำลังอัปโหลด",20);const d=await driveSend(c.blob,q=>prog("กำลังอัปโหลด",20+q*75));
@@ -313,3 +313,34 @@ async function playNowOpen(){const s=$("#sheet");s.className="glass on full";s.i
  DJC=DJC||await api("/catalog").catch(()=>[]);const f=()=>{const q=$("#pnq").value.trim().toLowerCase();$("#pnl").innerHTML=DJC.filter(c=>!q||c.title.toLowerCase().includes(q)).slice(0,80).map(c=>`<a class="row" onclick="radioCtl('play',${c.id})"><img src="https://i.ytimg.com/vi/${c.yid}/default.jpg" alt=""><div class="t"><div>${esc(c.title)}</div></div>▶︎</a>`).join("")};$("#pnq").oninput=f;f()}
 setInterval(async()=>{if(document.hidden||!RAD)return;const j=await api("/radio").catch(()=>null);if(!j)return;const sig=j.start+":"+j.tracks.map(t=>t.id+"/"+t.dur).join(",");if(radioSig&&sig!=radioSig){RAD={start:j.start,off:j.now-Date.now()};PLS=j.tracks;radioPlay()}radioSig=sig},6000);
 let radioSig="";
+
+// ---------- follow from the feed (crown-plus badge on the avatar) ----------
+async function feedFollow(uid){if(!tok)return go("me");const bs=document.querySelectorAll(".fu"+uid);bs.forEach(b=>{b.classList.add("ok");b.innerHTML="<b>✓</b>"});
+ try{await api("/follow",{method:"POST",body:JSON.stringify({id:uid,on:true})});FOL.add(uid);navigator.vibrate&&navigator.vibrate(10);
+  setTimeout(()=>bs.forEach(b=>{const an=b.animate([{transform:"translateX(-50%) scale(1)",opacity:1},{transform:"translateX(-50%) scale(1.25)",opacity:1,offset:.3},{transform:"translateX(-50%) scale(0)",opacity:0}],{duration:450,easing:"ease-in"});an.onfinish=()=>{b.closest(".avb")?.classList.remove("ring");b.remove()}}),650)}
+ catch(e){bs.forEach(b=>{b.classList.remove("ok");b.innerHTML="<b>+</b>"});toast(e.message)}}
+// ---------- crop / position editor (drag, pinch, slider zoom, 9:16 / 4:5 / 1:1) ----------
+function cropEditor(file){return new Promise(async(done,fail)=>{let bm;try{bm=await loadBitmap(file)}catch(e){return fail(e)}
+ const iw=bm.naturalWidth||bm.width,ih=bm.naturalHeight||bm.height,k=Math.min(1,1600/Math.max(iw,ih)),pc=document.createElement("canvas");pc.width=Math.round(iw*k);pc.height=Math.round(ih*k);pc.getContext("2d").drawImage(bm,0,0,pc.width,pc.height);
+ const o=document.createElement("div");o.id="crop";o.innerHTML=`<div class="chd"><button class="x" id="cx">${I("x")}</button><b>จัดตำแหน่งรูป</b><button class="btn sm" id="cok">ใช้รูปนี้</button></div>
+  <div class="cst" id="cstage"><div class="cfr" id="cfr"></div></div>
+  <div class="cft"><div class="chips" style="justify-content:center">${[["9:16",9/16],["4:5",.8],["1:1",1]].map(([l,v],i)=>`<span class="chip${i?"":" on"}" data-r="${v}">${l}</span>`).join("")}</div>
+  <input type="range" id="cz" min="1" max="4" step="0.01" value="1"><p class="m" style="text-align:center;margin:0">ลากเพื่อเลื่อน · ถ่างสองนิ้วหรือเลื่อนแถบเพื่อซูม</p></div>`;
+ document.body.appendChild(o);const stg=$("#cstage"),fr=$("#cfr");fr.appendChild(pc);pc.className="cimg";
+ let R=9/16,z=1,tx=0,ty=0,W=0,H=0,s0=1;
+ const lay=()=>{const sw=stg.clientWidth-24,sh=stg.clientHeight-24;W=Math.min(sw,sh*R);H=W/R;fr.style.width=W+"px";fr.style.height=H+"px";s0=Math.max(W/iw,H/ih);clamp();paint()};
+ const clamp=()=>{const s=s0*z,mx=Math.max(0,(iw*s-W)/2),my=Math.max(0,(ih*s-H)/2);tx=Math.max(-mx,Math.min(mx,tx));ty=Math.max(-my,Math.min(my,ty))};
+ const paint=()=>{const s=s0*z;pc.style.width=iw*s+"px";pc.style.height=ih*s+"px";pc.style.transform=`translate(-50%,-50%) translate(${tx}px,${ty}px)`};
+ o.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{o.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");R=+c.dataset.r;lay()});
+ const zr=$("#cz");zr.oninput=()=>{z=+zr.value;clamp();paint()};
+ const P=new Map();let d0=0,z0=1;
+ fr.addEventListener("pointerdown",e=>{fr.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size==2){const [a,b]=[...P.values()];d0=Math.hypot(a.x-b.x,a.y-b.y);z0=z}});
+ fr.addEventListener("pointermove",e=>{const p=P.get(e.pointerId);if(!p)return;if(P.size==1){tx+=e.clientX-p.x;ty+=e.clientY-p.y}p.x=e.clientX;p.y=e.clientY;
+  if(P.size==2){const [a,b]=[...P.values()],d=Math.hypot(a.x-b.x,a.y-b.y);z=Math.max(1,Math.min(4,z0*d/(d0||1)));zr.value=z}clamp();paint()});
+ const up=e=>{P.delete(e.pointerId)};fr.addEventListener("pointerup",up);fr.addEventListener("pointercancel",up);
+ o.addEventListener("touchmove",e=>e.preventDefault(),{passive:false});
+ const close=v=>{o.remove();removeEventListener("resize",lay);done(v)};$("#cx").onclick=()=>close(null);addEventListener("resize",lay);
+ $("#cok").onclick=async()=>{const s=s0*z,sw=W/s,sh=H/s,sx=iw/2-tx/s-sw/2,sy=ih/2-ty/s-sh/2,oh=Math.min(1080/Math.max(1,R),Math.round(sh)),OW=Math.round(R>=1?Math.min(1080,sw):Math.min(1080*R,sw)),OH=Math.round(OW/R);
+  const c=document.createElement("canvas");c.width=OW;c.height=OH;const g=c.getContext("2d");g.imageSmoothingQuality="high";g.drawImage(bm,sx,sy,sw,sh,0,0,OW,OH);
+  const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.92));close(new File([b],"crop.jpg",{type:"image/jpeg"}))};
+ requestAnimationFrame(lay)})}
