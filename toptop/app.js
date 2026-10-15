@@ -243,7 +243,7 @@ let chatBusy=false;async function pollChat(first){if(!chatPeer||!$("#msgs"))retu
 let dmSending=false;async function sendDm(){const i=$("#dmi"),t=i.value.trim();if(!t||dmSending)return;dmSending=true;const btn=$("#sheet form .btn");btn&&(btn.disabled=true);
  const cid=Date.now().toString(36)+Math.random().toString(36).slice(2,8),box=$("#msgs"),d=document.createElement("div");d.className="msg me pend";d.dataset.cid=cid;d.innerHTML=esc(t)+"<small>กำลังส่ง…</small>";box.appendChild(d);box.parentElement.scrollTop=1e9;i.value="";
  try{await api("/dm",{method:"POST",body:JSON.stringify({to:chatPeer,text:t,cid})});await pollChat()}catch(e){d.remove();toast(e.message);i.value=t}finally{dmSending=false;btn&&(btn.disabled=false)}}
-async function refreshUnread(){if(!tok)return;const j=await api("/me").catch(()=>null);if(j){me={...j.user,unread:j.unread};badge()}}
+async function refreshUnread(){if(!tok)return;const j=await api("/me").catch(()=>null);if(j){const had=me?.role;me={...j.user,unread:j.unread};badge();if(had!=me.role)paintNp()}}
 function badge(){const a=document.querySelector('#nav a[data-p="chat"]');if(!a)return;a.querySelector(".bdg")?.remove();if(me?.unread)a.insertAdjacentHTML("beforeend",`<span class="bdg">${me.unread>99?"99+":me.unread}</span>`)}
 setInterval(()=>{if(!document.hidden&&!chatT)refreshUnread()},20000);
 // ---------- terms ----------
