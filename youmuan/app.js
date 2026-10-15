@@ -11,7 +11,7 @@ heart:'<path d="M12 20.5S3 15 3 8.8A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 9 2.8C21 15
 hearts:'<path d="M9 18.5S2.5 14.5 2.5 9.8a3.6 3.6 0 0 1 6.5-2 3.6 3.6 0 0 1 6.5 2"/><path d="M15.5 21s-5-3.2-5-6.8a2.8 2.8 0 0 1 5-1.6 2.8 2.8 0 0 1 5 1.6c0 3.6-5 6.8-5 6.8z"/>',
 chat:'<path d="M20 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>',share:'<path d="M14 4l7 7-7 7M21 11H10a6 6 0 0 0-6 6v3"/>',
 up:'<path d="M12 16V4M6 10l6-6 6 6M4 20h16"/>',music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
-vol:'<path d="M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6"/>',play:'<path d="M7 4v16l13-8z"/>',star:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+vol:'<path d="M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6"/>',volon:'<path d="M4 9v6h4l5 4V5L8 9zM16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/>',play:'<path d="M7 4v16l13-8z"/>',star:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
 spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>',logout:'<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/>'};
 const I=(n,c="")=>`<svg class="i ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
 // ---------- state ----------
@@ -22,7 +22,7 @@ const artistOf=t=>ROSTER.find(r=>t.includes(r)||t.includes(r.split(" ")[0]))||"�
 const st=id=>S[id]||(S[id]={pts:0,likes:0,spam:0,cm:0});
 const yv=v=>v.yid||v.id;const thumb=v=>v.kind=="link"?"":`https://i.ytimg.com/vi/${yv(v)}/${v.kind=="short"?"oardefault":"hqdefault"}.jpg`;
 const hq=id=>`https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-function toast(t){const x=document.createElement("div");x.textContent=t;x.style.cssText="position:fixed;top:42%;left:50%;transform:translateX(-50%);background:#000;border:1px solid #fff5;padding:10px 18px;border-radius:12px;z-index:99;font:300 14px Kanit";document.body.appendChild(x);setTimeout(()=>x.remove(),2000)}
+function toast(t){const x=document.createElement("div");x.textContent=t;x.style.cssText="position:fixed;top:42%;left:50%;transform:translateX(-50%);background:#000;border:1px solid #fff5;padding:10px 18px;border-radius:12px;z-index:99;font:300 14px Kanit;pointer-events:none";document.body.appendChild(x);setTimeout(()=>x.remove(),2000)}
 // ---------- backend ----------
 async function api(p,o={}){const r=await fetch(API+p,{...o,headers:{"content-type":"application/json",...(tok?{authorization:"Bearer "+tok}:{})}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
 const abKey=(k,id)=>(k+"-"+id).replace(/[^A-Za-z0-9_-]/g,"_").slice(0,64);
@@ -60,8 +60,7 @@ async function loadVideos(){const yt=await fetch("videos.json?"+Date.now()).then
  V=out.map(v=>({...v,artist:v.artist||artistOf(v.title)}))}
 // ---------- feed ----------
 function clipEl(v,i){const d=document.createElement("section");d.className="clip";d.dataset.i=i;d.dataset.id=v.id;
- d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.url)}" target="_blank" rel="noopener">เปิดลิงก์</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><div class="pz">${I("play","f")}</div>
- <div class="mute">${I("vol")}แตะเพื่อเปิดเสียง</div>
+ d.innerHTML=`<div class="bg" style="background-image:url('${thumb(v)}')"></div><div class="media ${v.kind=="video"||(v.kind=="link"&&!v.vertical)?"wide":""}">${v.kind=="link"?`<div class="lcard">${I("share")}<b>${PL[v.platform]}</b><p>${esc(v.title)}</p><a class="btn" href="${esc(v.url)}" target="_blank" rel="noopener">เปิดลิงก์</a></div>`:`<img loading="lazy" src="${thumb(v)}" onerror="this.src='${hq(yv(v))}'">`}</div><div class="tap"></div><button class="mute"></button>
  <div class="side"><div class="av">${esc(v.artist[0])}</div>
  <button class="sp">${I("hearts")}<b class="ns">0</b><small>หัวใจรัว</small></button>
  <button class="cmb">${I("chat")}<b class="nc">0</b><small>ความเห็น</small></button>
@@ -70,7 +69,7 @@ function clipEl(v,i){const d=document.createElement("section");d.className="clip
  <div class="meta"><div class="ar">@${esc(v.artist)}</div><div class="ti">${esc(v.title)}</div><div class="m">${I("music")}${v.url?"คลิปจากศิลปิน · "+PL[v.platform]:"พอดีม่วน STUDIO"}</div></div>`;
  const tp=d.querySelector(".tap");let pd=null;tp.addEventListener("pointerdown",e=>{pd={x:e.clientX,y:e.clientY,t:Date.now()}});tp.addEventListener("pointercancel",()=>pd=null);tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)onTap(d,v,e);pd=null});tp.addEventListener("dblclick",e=>e.preventDefault());
  const sp=d.querySelector(".sp");sp.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=sp.getBoundingClientRect();heart(d,v,{clientX:r.left+r.width/2-40+Math.random()*30,clientY:r.top})},{passive:false});sp.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
- d.querySelector(".cmb").onclick=()=>openCm(v);d.querySelector(".sh").onclick=()=>share(v);return d}
+ d.querySelector(".cmb").onclick=()=>openCm(v);d.querySelector(".sh").onclick=()=>share(v);const mb=d.querySelector(".mute");mb.addEventListener("pointerdown",e=>e.stopPropagation());mb.onclick=e=>{e.stopPropagation();setMute(!muted)};return d}
 function paint(d){const s=st(d.dataset.id);d.querySelector(".ns").textContent=nf(s.spam);d.querySelector(".nc").textContent=nf(s.cm);d.querySelector(".np").textContent=nf(s.pts);}
 const paintAll=()=>document.querySelectorAll(".clip").forEach(paint);
 const ytCmd=(f,fn)=>f?.contentWindow?.postMessage(JSON.stringify({event:"command",func:fn,args:[]}),"*");
@@ -83,31 +82,30 @@ function mount(d){if(cur?.d==d)return;sendWatch();const v=V[d.dataset.i],m=d.que
  else{const f=document.createElement("iframe");f.allow="autoplay;encrypted-media;fullscreen";
   f.src=`https://www.youtube.com/embed/${yv(v)}?autoplay=1&mute=${muted?1:0}&playsinline=1&loop=1&playlist=${yv(v)}&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
   f.onload=()=>f.contentWindow.postMessage('{"event":"listening","id":1}',"*");m.appendChild(f)}
- document.querySelectorAll(".mute").forEach(x=>x.style.display=muted?"":"none");
+ paintMute();
  const i=+d.dataset.i;loadStats(V.slice(i,i+4).map(x=>x.id));history.replaceState(null,"","#v="+v.id+(location.hash.match(/ref=\w+/)?"&"+location.hash.match(/ref=\w+/)[0]:""))}
 addEventListener("message",e=>{if(!/youtube/.test(e.origin))return;try{const j=JSON.parse(e.data),inf=j.info||{};
  if(inf.playerState!==undefined)playing=inf.playerState==1,inf.playerState==0&&(W.done=true);
  if(inf.currentTime&&inf.duration&&inf.currentTime>inf.duration-1.5)W.done=true}catch(_){}});
 // count only while visible + playing + feed shown
 setInterval(()=>{if(cur&&playing&&!document.hidden&&$("#feed").style.display!="none"&&$("#promo").style.display!="flex"){st(cur.v.id).pts+=10000;q("pts",cur.v.id,1);W.secs++;paint(cur.d)}},1000);
-function unmute(d){muted=false;document.querySelectorAll(".mute").forEach(x=>x.style.display="none");const f=d.querySelector("iframe");ytCmd(f,"unMute");ytCmd(f,"playVideo");const vd=d.querySelector("video");if(vd){vd.muted=false;vd.play()}}
-function togglePlay(d){const f=d.querySelector("iframe"),vd=d.querySelector("video"),p=d.classList.toggle("paused");
- if(vd)p?vd.pause():vd.play();else ytCmd(f,p?"pauseVideo":"playVideo");if(f)playing=!p}
+function paintMute(){document.querySelectorAll(".clip .mute").forEach(b=>b.innerHTML=muted?I("vol")+"<span>แตะเพื่อเปิดเสียง</span>":I("volon"))}
+function setMute(m){muted=m;paintMute();if(!cur)return;const f=cur.d.querySelector("iframe"),vd=cur.d.querySelector("video");if(f){ytCmd(f,m?"mute":"unMute");ytCmd(f,"playVideo")}if(vd){vd.muted=m;vd.play()}}
 // single tap = pause/play (or unmute first time); double+ tap = หัวใจรัว
-// pointerdown on a transparent overlay above the player. A lone tap = play/pause (decided after 250 ms);
-// any tap that follows within 400 ms is a burst: the pending pause is cancelled and every tap (incl. the first) becomes a heart
-let tapT=null,lastTap=0,first=null;
-function onTap(d,v,e){const now=Date.now(),pt={clientX:e.clientX,clientY:e.clientY};
- if(now-lastTap<400){lastTap=now;if(tapT){clearTimeout(tapT);tapT=null;if(first){heart(d,v,first);first=null}}heart(d,v,pt);return}
- lastTap=now;first=pt;tapT=setTimeout(()=>{tapT=null;first=null;if(muted)unmute(d);else togglePlay(d)},250)}
+// taps on the transparent overlay above the player = หัวใจรัว only (no pause). Sound is the mute button.
+function onTap(d,v,e){heart(d,v,{clientX:e.clientX,clientY:e.clientY})}
 // หัวใจรัว combo: +1 per tap; 100-tap streak on a clip -> 10 s "ใจเดือด" boost, +100 per tap; then streak resets
 const CB={vid:null,streak:0,until:0,combo:0,timer:null};
 function heart(d,v,e){if(CB.vid!=v.id){endBoost();CB.vid=v.id;CB.streak=0}
  const boost=Date.now()<CB.until,add=boost?100:1;
  const h=document.createElement("div");h.className="heart"+(boost?" big":"");h.innerHTML=I("heart");h.style.left=e.clientX+"px";h.style.top=e.clientY+"px";h.style.setProperty("--r",(Math.random()*40-20)+"deg");d.appendChild(h);setTimeout(()=>h.remove(),1000);
+ d.querySelector(".sp").classList.add("on");hint(boost);
  st(v.id).spam+=add;if(boost){q("boost",v.id,1);CB.combo++;burst(d,e);$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{q("spam",v.id,1);if(++CB.streak>=100)startBoost(d)}
  paint(d)}
-function startBoost(d){CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
+let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";document.body.appendChild(h)}
+ if(boost){h.style.display="none";return}h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b>${Math.min(CB.streak+1,100)}/100</b><i style="width:${Math.min(CB.streak+1,100)}%"></i>`;h.style.display="block";
+ clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
+function startBoost(d){$("#cbh")&&($("#cbh").style.display="none");CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
  o.innerHTML=`<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="trk"/><circle cx="50" cy="50" r="44" class="rng" id="cbr"/></svg><b id="cbs">10</b><div class="cbt">ใจเดือด!</div><div id="cbn">x0</div>`;o.style.display="flex";
  requestAnimationFrame(()=>{$("#cbr").style.transition="stroke-dashoffset 10s linear";$("#cbr").style.strokeDashoffset="276.5"});
  clearInterval(CB.timer);CB.timer=setInterval(()=>{const s=Math.ceil((CB.until-Date.now())/1000);if(s<=0)return endBoost();$("#cbs").textContent=s},200);toast("ใจเดือด! 10 วินาที กดหัวใจละ +100")}
