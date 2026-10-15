@@ -28,14 +28,14 @@ function setAmb(a,b){const r=document.documentElement.style;r.setProperty("--a1"
 const SEED=sessionStorage.tt_seed||(sessionStorage.tt_seed=Math.random().toString(36).slice(2));
 const hsh=s=>{let h=2166136261;for(const c of s+SEED)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 let FOL=new Set(),SEEN=new Set(),newCnt=0;
-async function loadFeed(){try{const [j,fl]=await Promise.all([api("/photos"),tok?api("/following").catch(()=>[]):[]]);FOL=new Set(fl);const L=j.photos.filter(x=>x.expires>now());L.forEach(x=>SEEN.add(x.id));newCnt=0;newPill();
+async function loadFeed(rand){try{const [j,fl]=await Promise.all([api("/photos"),tok?api("/following").catch(()=>[]):[]]);FOL=new Set(fl);const L=j.photos.filter(x=>x.expires>now());L.forEach(x=>SEEN.add(x.id));newCnt=0;newPill();
  const top=[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,8),ids=new Set(top.map(x=>x.id));
  const fol=L.filter(x=>!ids.has(x.id)&&FOL.has(x.uid)).sort((a,b)=>b.created-a.created);fol.forEach(x=>ids.add(x.id));
- F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
+ if(rand){F=L.filter(x=>x.uid!=me?.id).sort(()=>Math.random()-.5);return}F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
 async function pollNew(){if(document.hidden||tab!="home")return;const j=await api("/photos?sort=new").catch(()=>null);if(!j)return;newCnt=j.photos.filter(x=>x.expires>now()&&!SEEN.has(x.id)&&x.uid!=me?.id).length;newPill()}
 setInterval(pollNew,45000);
 function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
-async function homeRefresh(){$("#newp")?.remove();await loadFeed();buildFeed();$("#feed").scrollTo({top:0,behavior:"smooth"})}
+async function homeRefresh(){$("#newp")?.remove();const h=$('#nav a[data-p="home"]');h&&h.classList.add("busy");try{await loadFeed(true);buildFeed();$("#feed").scrollTo({top:0})}finally{setTimeout(()=>h&&h.classList.remove("busy"),350)}}
 function postEl(x,i){const d=document.createElement("section");d.className="post";d.dataset.i=i;d.dataset.id=x.id;const src=media(x.fid);
  d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><img src="${src}" ${i>1?'loading="lazy"':""} decoding="async" alt=""></div><div class="tap"></div>
  <div class="timer glass">${I("clock")}<span class="tl">--:--</span><small>เหลือ</small></div>
@@ -75,8 +75,8 @@ const FX={c:null,x:null,p:[],t:[],r:[],run:false,last:0,combo:0,lastTap:0,MAX:70
 function fxInit(){if(FX.c)return;const c=FX.c=document.createElement("canvas");c.id="fx";document.body.appendChild(c);FX.x=c.getContext("2d");
  const rs=()=>{const dpr=Math.min(devicePixelRatio||1,1.5);c.width=innerWidth*dpr;c.height=innerHeight*dpr;FX.x.setTransform(dpr,0,0,dpr,0,0)};rs();addEventListener("resize",rs)}
 function spawn(x,y,n,spd,big){for(let i=0;i<n&&FX.p.length<FX.MAX;i++){const a=Math.random()*Math.PI*2,s=spd*(.35+Math.random()*.9);
- FX.p.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-spd*.35,life:0,max:.55+Math.random()*.55,size:(big?9:5)+Math.random()*(big?12:7),heart:Math.random()<.55,rot:Math.random()*6,vr:(Math.random()-.5)*10})}}
-function popText(x,y,s,size,dur=.8,center=false){FX.t.push({x,y,s,size,life:0,max:dur,center});if(FX.t.length>6)FX.t.shift()}
+ FX.p.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-spd*.35,life:0,max:.55+Math.random()*.55,size:(big?9:5)+Math.random()*(big?12:7),heart:true,rot:Math.random()*6,vr:(Math.random()-.5)*10})}}
+function popText(){return;FX.t.push({x,y,s,size,life:0,max:dur,center});if(FX.t.length>6)FX.t.shift()}
 function heartPath(g,s){g.beginPath();g.moveTo(0,s*.35);g.bezierCurveTo(-s*1.1,-s*.35,-s*.45,-s*1.05,0,-s*.45);g.bezierCurveTo(s*.45,-s*1.05,s*1.1,-s*.35,0,s*.35);g.fill()}
 function fxLoop(ts){const g=FX.x,dt=Math.min(.05,(ts-(FX.last||ts))/1000);FX.last=ts;g.clearRect(0,0,innerWidth,innerHeight);
  for(let i=FX.p.length-1;i>=0;i--){const p=FX.p[i];p.life+=dt;if(p.life>=p.max){FX.p.splice(i,1);continue}p.vy+=1100*dt;p.vx*=.985;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
@@ -94,10 +94,10 @@ function fxKick(){if(!FX.run){FX.run=true;requestAnimationFrame(fxLoop)}}
 const TIERS_FX=[[100,"x100 ตำนาน!"],[50,"x50!"],[25,"x25 COMBO!"],[10,"x10 COMBO!"]];
 function tapFX(x,y,add,boost){fxInit();const t=performance.now();FX.combo=t-FX.lastTap<700?FX.combo+1:1;FX.lastTap=t;const c=FX.combo;
  spawn(x,y,boost?8:c>=25?5:4,boost?900:c>=25?650:480,boost||c>=50);popText(x,y-30,"+"+add,boost?44:c>=25?30:c>=10?26:22);
- if(boost)FX.r.push({x,y,R:110,w:6,life:0,max:.45});const tier=TIERS_FX.find(q=>c==q[0]);if(tier){popText(innerWidth/2,innerHeight*.32,tier[1],tier[0]>=50?52:40,1.1,true);FX.r.push({x:innerWidth/2,y:innerHeight*.32,R:180,w:4,life:0,max:.6})}
+ const tier=TIERS_FX.find(q=>c==q[0]);if(tier){popText(innerWidth/2,innerHeight*.32,tier[1],tier[0]>=50?52:40,1.1,true);0&&FX.r.push({x:innerWidth/2,y:innerHeight*.32,R:180,w:4,life:0,max:.6})}
  if(c%20==0)shake(2);if(c%10==1&&navigator.vibrate)navigator.vibrate(6);fxKick()}
 function shake(px){const m=cur?.d.querySelector(".ph img");if(!m||!m.animate)return;m.animate([{transform:"translate(0,0)"},{transform:`translate(${px}px,0)`},{transform:`translate(-${px}px,0)`},{transform:"translate(0,0)"}],{duration:180})}
-function startBoost(){fxInit();for(let i=0;i<4;i++)spawn(Math.random()*innerWidth,Math.random()*innerHeight*.8,8,800,true);FX.r.push({x:innerWidth/2,y:innerHeight/2,R:Math.max(innerWidth,innerHeight)*.75,w:10,life:0,max:.8});
+function startBoost(){fxInit();for(let i=0;i<4;i++)spawn(Math.random()*innerWidth,Math.random()*innerHeight*.8,8,800,true);0&&FX.r.push({x:innerWidth/2,y:innerHeight/2,R:Math.max(innerWidth,innerHeight)*.75,w:10,life:0,max:.8});
  popText(innerWidth/2,innerHeight*.45,"ใจเดือด!",56,1.2,true);shake(4);navigator.vibrate&&navigator.vibrate(20);fxKick();document.body.classList.add("glow");
  $("#cbh")&&($("#cbh").style.display="none");CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
  o.innerHTML=`<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="trk"/><circle cx="50" cy="50" r="44" class="rng" id="cbr"/></svg><b id="cbs">10</b><div class="cbt">ใจเดือด!</div><div id="cbn">x0</div>`;o.style.display="flex";
@@ -261,7 +261,7 @@ function sortBar(){let s=$(".sort");if(!s){s=document.createElement("div");s.cla
 
 // ---------- time-added FX: big pop at each +1 ชม. (every 10,000 hearts), light pulse otherwise ----------
 let gT=0;function gainFX(d,add){const t=performance.now();if(t-gT<(add>1?120:260))return;gT=t;const tm=d.querySelector(".timer");tm&&tm.animate&&tm.animate([{boxShadow:"0 0 0 0 rgba(47,224,255,0)"},{boxShadow:`0 0 ${add>1?26:14}px 2px rgba(47,224,255,.75)`},{boxShadow:"0 0 0 0 rgba(47,224,255,0)"}],{duration:add>1?420:300});
- if(add>1)floatBadge(d,"+"+Math.round(add*MSH/1000)+" วิ",false)}
+ }
 function hourFX(d){const tm=d.querySelector(".timer");if(tm&&tm.animate)tm.animate([{transform:"translateX(-50%) scale(1)",boxShadow:"0 0 0 rgba(255,200,61,0)"},{transform:"translateX(-50%) scale(1.28)",boxShadow:"0 0 40px 6px rgba(255,200,61,.95)",offset:.3},{transform:"translateX(-50%) scale(1)",boxShadow:"0 0 0 rgba(255,200,61,0)"}],{duration:900,easing:"cubic-bezier(.2,.9,.3,1.2)"});
  floatBadge(d,"+1 ชม.",true);navigator.vibrate&&navigator.vibrate(25)}
 function floatBadge(d,txt,big){const b=document.createElement("div");b.className="tbadge"+(big?" big":"");b.textContent=txt;d.appendChild(b);

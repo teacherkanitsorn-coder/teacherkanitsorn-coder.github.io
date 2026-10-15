@@ -134,3 +134,5 @@ body.offfeed #top{background:linear-gradient(180deg,rgba(8,4,31,.94),rgba(8,4,31
 #djn.on{display:flex}#djn button{border:0;background:rgba(255,255,255,.14);border-radius:50%;width:26px;height:26px;display:grid;place-items:center}#djn button .i{width:14px;height:14px}
 .fc{color:var(--mt);font-size:13px;margin:-2px 0 12px}.fc b{color:#fff}
 .btn.sm{padding:7px 14px;font-size:13px;border-radius:99px;box-shadow:none;flex:none}
+
+#nav a.busy .i{stroke:#ff3b5c;opacity:1;filter:drop-shadow(0 0 6px rgba(255,59,92,.8))}#nav a.busy{color:#ff3b5c}
