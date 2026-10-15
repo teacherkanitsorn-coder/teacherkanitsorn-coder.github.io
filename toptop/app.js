@@ -143,7 +143,8 @@ function paintNp(){const n=$("#np");if(!PLS.length){n.className="";return}const 
  n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button class="dj" aria-label="ขอเพลง" onclick="event.stopPropagation();djOpen()">${I("music")}</button>${me?.role=="admin"?`<button class="adm" aria-label="เพลงถัดไป" onclick="event.stopPropagation();radioCtl('skip')">⏭</button><button class="adm" aria-label="เล่นทันที" onclick="event.stopPropagation();playNowOpen()">▶︎</button>`:""}<button class="mu" aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector(".mu").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
 function setMusicMute(m){musicMuted=m;ls.set("tt_mute",m);markStarted();ytc(m?"mute":"unMute");if(!m)radioPlay();else paintNp()}
 function markStarted(){started=true;sessionStorage.tt_started="1";$("#tts")?.remove()}
-function tapToStart(){if(!UNL)listenTap()}
+let TTS_SHOWN=false;function tapToStart(){if(UNL||!PLS.length)return;listenTap();if(TTS_SHOWN)return;TTS_SHOWN=true;
+ const t=document.createElement("div");t.id="tts";t.innerHTML=`<div class="pl">${I("vol")}</div><b>แตะเพื่อฟังเพลง</b><span>${esc(PLS[PLI]?.title||"")}</span>`;document.body.appendChild(t)}
 // ---------- photo pipeline: compress on phone (<=1080px JPEG ~200-400KB) -> Drive bridge ----------
 async function loadBitmap(file){try{return await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){}
  try{return await createImageBitmap(file)}catch(e){}

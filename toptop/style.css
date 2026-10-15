@@ -166,3 +166,6 @@ body.offfeed #top{background:linear-gradient(180deg,rgba(8,4,31,.94),rgba(8,4,31
 #lcs:disabled{opacity:.4;box-shadow:none}#lcs:not(:disabled):active{transform:scale(.9)}
 #lc .lct{width:44px;height:44px}
 #lc .lcm{transition:opacity 1.5s ease}#lc .lcm.dim{opacity:0}
+#tts{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(8,4,31,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;text-align:center;animation:lcin .3s}
+#tts .pl{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#ffc400,#ff2fb3,#2fe0ff);display:grid;place-items:center;box-shadow:0 0 40px rgba(255,47,179,.6)}#tts .pl svg{width:38px;height:38px}
+#tts b{font:600 18px Prompt}#tts span{font-size:13px;opacity:.75;max-width:80vw}
