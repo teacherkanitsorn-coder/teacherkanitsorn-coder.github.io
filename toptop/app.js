@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="34";
+const APPV="35";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -63,7 +63,7 @@ setInterval(()=>{if(tab!="home")return;const dead=F.filter(x=>x.expires<=now());
 const HQ={},TT={};function hq(id,n,k){const q=HQ[id]||(HQ[id]={n:0,k:0});q.n+=n;q.k+=k;const t=TT[id]||(TT[id]=[]);t.push(performance.now());if(t.length>80)t.shift()}
 function ivStat(id){const t=TT[id]||[];delete TT[id];const d=[];for(let i=1;i<t.length;i++){const v=t[i]-t[i-1];if(v<1500)d.push(v)}if(d.length<5)return {c:d.length};const m=d.reduce((a,b)=>a+b,0)/d.length,s=Math.sqrt(d.reduce((a,b)=>a+(b-m)**2,0)/d.length);return {c:d.length,m:Math.round(m*10)/10,s:Math.round(s*10)/10}}
 let hfly=false,hLimT=0;async function flushHearts(){if(hfly)return;hfly=true;try{for(const [pid,q] of Object.entries(HQ)){delete HQ[pid];if(!q.n&&!q.k)continue;try{const r=await api("/hearts",{method:"POST",body:JSON.stringify({pid,n:q.n,k:q.k,iv:ivStat(pid)})});const x=F.find(y=>y.id==pid);
-  if(x&&r.expires){x.hearts=r.hearts+(HQ[pid]?HQ[pid].n+HQ[pid].k*100:0);x.expires=r.expires;updAllRanks()}if(r.limited&&Date.now()-hLimT>15000){hLimT=Date.now();toast("กดเร็วมาก! บางหัวใจไม่นับ พักแป๊บนะ ❤️")}if(r.expired)toast("รูปนี้หมดเวลาแล้ว");if(r.hero)toast("🦸 คุณคือฮีโร่! ช่วยชีวิตรูปนี้ไว้ได้ทัน");if(r.gotBox){toast("🎁 ได้กล่องสุ่ม! เปิดได้ที่หน้าโปรไฟล์");if(me)me.boxes=(me.boxes||0)+1}}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}finally{hfly=false}}
+  if(x&&r.expires){x.hearts=r.hearts+(HQ[pid]?HQ[pid].n+HQ[pid].k*100:0);x.expires=r.expires;updAllRanks()}if(r.limited&&Date.now()-hLimT>15000){hLimT=Date.now();toast("กดเร็วมาก! บางหัวใจไม่นับ พักแป๊บนะ ❤️")}if(r.expired)toast("รูปนี้หมดเวลาแล้ว")}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}finally{hfly=false}}
 setInterval(flushHearts,1000);addEventListener("pagehide",flushHearts);
 const CB={pid:null,streak:0,until:0,combo:0,timer:null};
 let pinT=null;let pinned=false;function pinFeed(){const f=$("#feed");if(!cur)return;if(!pinned){pinned=true;f.style.overflowY="hidden"}clearTimeout(pinT);pinT=setTimeout(()=>{pinned=false;f.style.overflowY="";if(cur&&Math.abs(f.scrollTop-cur.d.offsetTop)>1)f.scrollTop=cur.d.offsetTop},600)}
@@ -231,7 +231,7 @@ async function admin(){const a=$("#adm");if(!a)return;const [pl,rp,dq,cat,fg,qt]
    <input id="ctu" placeholder="ลิงก์ YouTube (เวอร์ชันเต็ม ไม่ใช่ MV)"><input id="ctt" placeholder="ชื่อเพลง (ไม่บังคับ)"><button class="btn" onclick="ctAdd()">+ เพิ่มเข้าคลัง</button>
    ${cat.map(c=>`<div class="row" style="${c.active?"":"opacity:.45"}"><div class="t"><div>${esc(c.title)}</div><div class="m">${c.yid}</div></div><button class="x" onclick="ctEdit(${c.id})">✎</button><button class="x" onclick="ctToggle(${c.id},${c.active?0:1})">${c.active?"ซ่อน":"แสดง"}</button><button class="x" onclick="ctDel(${c.id})">${I("x")}</button></div>`).join("")}</details>
 `;a._pl=pl}
-async function plAdd(cid){try{await api("/admin/playlist",{method:"POST",body:JSON.stringify({cid,msg:$("#djmsg")?.value||""})});toast("เพิ่มเพลงแล้ว");admin();music()}catch(e){toast(e.message)}}
+async function plAdd(cid){try{await api("/admin/playlist",{method:"POST",body:JSON.stringify({cid})});toast("เพิ่มเพลงแล้ว");admin();music()}catch(e){toast(e.message)}}
 async function djOk(id,ok){try{await api("/admin/dj",{method:"POST",body:JSON.stringify({id,ok:!!ok})});toast(ok?"อนุมัติแล้ว เพลงจะเล่นต่อจากเพลงนี้":"ปฏิเสธแล้ว");admin();music()}catch(e){toast(e.message)}}
 async function ctAdd(){try{await api("/admin/catalog",{method:"POST",body:JSON.stringify({url:$("#ctu").value,title:$("#ctt").value})});DJC=null;toast("เพิ่มเข้าคลังแล้ว");admin()}catch(e){toast(e.message)}}
 async function ctEdit(id){const t=prompt("ชื่อเพลงใหม่");if(t){await api("/admin/catalog",{method:"PUT",body:JSON.stringify({id,title:t})});DJC=null;admin()}}
@@ -290,7 +290,7 @@ let DJC=null;async function djOpen(){if(!tok){toast("สมัครฟรีก
  DJC=DJC||await api("/catalog").catch(()=>[]);djList();DJFREE=!!(await api("/dj/free").catch(()=>({}))).free;if(DJFREE){$("#djb").insertAdjacentHTML("afterbegin",`<div class="freeb">🎁 <b>ฟรี 1 ครั้ง</b> คุณได้หัวใจเยอะสุดเมื่อวาน เลือกเพลงได้เลย ไม่ต้องโอน</div>`)}const mine=await api("/dj/mine").catch(()=>[]);if(mine.length)$("#djmine").innerHTML="<h3>คำขอของฉัน</h3>"+mine.map(r=>`<div class="row"><div class="t"><div>${esc(r.title)}</div><div class="m">${r.ref} · ${{pending:"รอตรวจสลิป",approved:"อนุมัติแล้ว ✓",rejected:"ไม่อนุมัติ"}[r.status]||r.status}</div></div></div>`).join("")}
 function djList(){const q=($("#djq")?.value||"").trim().toLowerCase(),L=(DJC||[]).filter(c=>!q||c.title.toLowerCase().includes(q)).slice(0,80);
  $("#djl").innerHTML=L.map(c=>`<a class="row" onclick="djPick(${c.id})"><img src="https://i.ytimg.com/vi/${c.yid}/default.jpg" alt=""><div class="t"><div>${esc(c.title)}</div><div class="m">${c.dur?Math.floor(c.dur/60)+":"+String(c.dur%60).padStart(2,"0"):""}</div></div>${I("plus")}</a>`).join("")||'<p class="m">ไม่พบเพลง</p>'}
-async function djPick(cid){const b=$("#djb");if(DJFREE){try{const r=await api("/dj/free",{method:"POST",body:JSON.stringify({cid,msg:$("#djmsg")?.value||""})});DJFREE=false;b.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:44px">🎉</div><h3>${esc(r.title)}</h3><p class="m">ใช้สิทธิ์ฟรีแล้ว! เพลงจะเล่นต่อจากเพลงปัจจุบันให้ทุกคนฟัง</p></div>`;setTimeout(music,1500)}catch(e){toast(e.message)}return}try{const r=await api("/dj",{method:"POST",body:JSON.stringify({cid,msg:$("#djmsg")?.value||""})});
+async function djPick(cid){const b=$("#djb");if(DJFREE){try{const r=await api("/dj/free",{method:"POST",body:JSON.stringify({cid})});DJFREE=false;b.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:44px">🎉</div><h3>${esc(r.title)}</h3><p class="m">ใช้สิทธิ์ฟรีแล้ว! เพลงจะเล่นต่อจากเพลงปัจจุบันให้ทุกคนฟัง</p></div>`;setTimeout(music,1500)}catch(e){toast(e.message)}return}try{const r=await api("/dj",{method:"POST",body:JSON.stringify({cid})});
  b.innerHTML=`<h3 style="margin-top:4px">${esc(r.title)}</h3><div class="card" style="text-align:center"><div style="font:700 30px Prompt;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent">โอน ${r.price} บาท</div>
   <img src="${API}/icons/pp-qr.jpg" alt="PromptPay QR" style="width:min(78vw,320px);border-radius:16px;margin:10px auto;display:block;background:#fff">
   <p class="m">ชื่อบัญชี นาย ชนะชัย แก้วกัญญา · สแกนด้วยแอปธนาคาร ใส่ยอด <b>${r.price} บาท</b> เอง</p>
@@ -379,7 +379,7 @@ async function lcMod(x){const c=prompt(`ข้อความของ ${x.name}
  toast("เรียบร้อย");$("#lcm").innerHTML="";LV.since=0;livePoll()}catch(e){toast(e.message)}}
 async function livePoll(){clearTimeout(LV.t);if(document.hidden)return;lcBuild();lcVis();
  try{const showing=tab=="home"&&!LV.hide,q=showing?LV.since:-1;const j=await api("/live?since="+(q<0?LV.since||1e15:q));
-  onlinePaint(j.online);if(j.nf&&typeof notifs=="function")notifs();
+  onlinePaint(j.online);
   if(showing&&j.msgs.length){lcAdd(j.msgs);LV.since=j.msgs[j.msgs.length-1].id;LV.idle=0}else LV.idle++;
 }catch(e){LV.idle++}
  const ms=document.hidden?0:(tab=="home"&&!LV.hide?(LV.idle<15?2500:5000):8000);if(ms)LV.t=setTimeout(livePoll,ms)}
@@ -431,7 +431,7 @@ function rankList(x){const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;if
  if(x.prov&&x.amph&&x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push([3,n,(B?"แขวง":"ต.")+x.tamb,""]);return o}
 function rankBadge(x){const o=rankList(x);return `<div class="rbs">${o.map(([l,n,t,f])=>`<span class="arb lv${l}" data-lv="${l}">${f}#<b>${n}</b> ${esc(t)}</span>`).join("")}</div>`}
 const RM=matchMedia("(prefers-reduced-motion: reduce)");
-function updRanks(d,x){const w=d&&d.querySelector(".rbs");if(!w)return;const o=rankList(x);if(o.length!=w.querySelectorAll(".arb").length){w.outerHTML=rankBadge(x);return}
+function updRanks(d,x){const w=d&&d.querySelector(".rbs");if(!w)return;const o=rankList(x);if(o.length!=w.children.length){w.outerHTML=rankBadge(x);return}
  o.forEach(([l,n])=>{const el=w.querySelector(`[data-lv="${l}"] b`);if(!el)return;const old=+el.textContent;if(old==n)return;const sp=el.parentNode;
   sp.classList.remove("up","dn");void sp.offsetWidth;sp.classList.add(n<old?"up":"dn");setTimeout(()=>sp.classList.remove("up","dn"),700);
   if(RM.matches||Math.abs(old-n)>8){el.textContent=n;return}let v=old;const st=n<old?-1:1;const t=setInterval(()=>{v+=st;el.textContent=v;if(v==n)clearInterval(t)},70)})}
