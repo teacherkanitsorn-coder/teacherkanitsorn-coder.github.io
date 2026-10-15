@@ -156,7 +156,7 @@ function pickAvatar(){let i=$("#avin");if(!i){i=document.createElement("input");
  i.value="";i.onchange=async()=>{const f=i.files&&i.files[0];if(!f)return;let st="เตรียมรูป";const show=t=>{const m=$("#avst");if(m)m.textContent=t;else toast(t)};
   try{show("กำลังย่อรูป...");const c=await compressImage(f,512,150e3,true);st="อัปโหลด";show("กำลังอัปโหลด...");const d=await driveSend(c.blob,q=>show("กำลังอัปโหลด "+Math.round(q*100)+"%"));
    st="บันทึก";const r=await api("/avatar",{method:"POST",body:JSON.stringify({drive:d})});me.avatar=r.avatar;show("");toast("เปลี่ยนรูปโปรไฟล์แล้ว ✓");mePage()}
-  catch(e){const msg=/เปิดรูปไม่ได้|decode|HEIC/i.test(e.message)?"เปิดรูปนี้ไม่ได้ (HEIC) ลองเลือกรูปอื่น หรือแคปหน้าจอรูปนั้นแล้วเลือกใหม่":e.message;show("");modal(`<h3>เปลี่ยนรูปโปรไฟล์ไม่สำเร็จ</h3><p class="m">ขั้นตอน: ${st}</p><p>${esc(msg)}</p><button class="btn w" onclick="$('#modal').style.display='none';pickAvatar()">ลองอีกครั้ง</button>`)}};
+  catch(e){const msg=/เปิดรูปไม่ได้|decode|HEIC/i.test(e.message)?"เปิดรูปนี้ไม่ได้ ลองเลือกรูปอื่น (ถ้าเป็นรูป HEIC ให้แคปหน้าจอรูปนั้นแล้วเลือกใหม่)":e.message;show("");modal(`<h3>เปลี่ยนรูปโปรไฟล์ไม่สำเร็จ</h3><p class="m">ขั้นตอน: ${st}</p><p>${esc(msg)}</p><button class="btn w" onclick="$('#modal').style.display='none';pickAvatar()">ลองอีกครั้ง</button>`)}};
  i.click()}
 // ---------- อันดับ: most time left (live) + Hall of fame (longest-lived) ----------
 let rankTab="live";const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${x.thumb||media(x.fid)}" alt=""><div class="t"><div>${esc(x.caption||"รูปของ "+x.name)}</div><div class="m">@${esc(x.name)} · ${lab}</div></div></a>`;
