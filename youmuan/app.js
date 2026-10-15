@@ -298,7 +298,8 @@ const f2t=f=>f.type||(/\.(mov|mp4|m4v|webm)$/i.test(f.name)?"video/mp4":"");
 // re-encode on device: canvas (<=720p) + WebAudio -> MediaRecorder (MP4/H.264 on iOS Safari & recent Chrome). Real-time; falls back to the original.
 async function compressVideo(file,dur,onp,ctx){
  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return null;
- const mt=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));if(!mt)return null; // webm would not play on iPhone
+ const saf=/Safari/.test(navigator.userAgent)&&!/Chrome|CriOS|Chromium|Android|FxiOS|Edg/.test(navigator.userAgent); // Safari's plain video/mp4 = H.264+AAC
+ const mt=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1.4D401F,mp4a.40.2","video/mp4;codecs=avc1,mp4a.40.2"].concat(saf?["video/mp4"]:[]).find(t=>MediaRecorder.isTypeSupported(t));if(!mt)return null; // webm would not play on iPhone
  if(file.size<12e6)return null; // already small
  const v=document.createElement("video");v.src=URL.createObjectURL(file);v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";
  await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("decode"))});
