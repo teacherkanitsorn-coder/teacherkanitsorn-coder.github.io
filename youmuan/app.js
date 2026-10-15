@@ -286,33 +286,61 @@ function composer(){let o=$("#cmp");if(!o){o=document.createElement("div");o.id=
  $("#cl").oninput=e=>{const u=e.target.value.trim();if(!u)return;file=null;const d=detect(u);pv.innerHTML=d.yid?`<img src="https://i.ytimg.com/vi/${d.yid}/hqdefault.jpg"><small class="chg">${PL[d.platform]}</small>`:`<span>${I("share")}</span><b>${PL[d.platform]||"ลิงก์"}</b><small>${esc(u.slice(0,60))}</small>`};
  $("#cgo").onclick=()=>{const ctx=window.AudioContext||window.webkitAudioContext?new (window.AudioContext||window.webkitAudioContext)():null; // created inside the tap (iOS)
   postClip(file,$("#cl").value.trim(),$("#ct").value,ad?$("#ca").value:"",ctx)}}
-function setProg(label,q){$("#cbar").style.display="block";$("#cbar").firstChild.style.width=Math.round(q)+"%";$("#cst").textContent=label+" "+Math.round(q)+"%"}
+let PG={l:"",t:0};function setProg(label,q){if(PG.l!=label)PG={l:label,t:Date.now(),q0:q};$("#cbar").style.display="block";$("#cbar").firstChild.style.width=Math.round(q)+"%";
+ const el=(Date.now()-PG.t)/1000,dq=q-PG.q0,eta=dq>2&&el>1.5?Math.max(0,Math.round(el/dq*(100-q))):null;$("#cst").textContent=label+" "+Math.round(q)+"%"+(eta!=null&&q<100?" · อีกประมาณ "+(eta>=60?Math.floor(eta/60)+" นาที "+eta%60+" วิ":eta+" วิ"):"")}
 async function postClip(file,url,title,artist,ctx){const btn=$("#cgo"),s=$("#cst");
  if(!file&&!url){s.textContent="เลือกคลิปหรือวางลิงก์ก่อนนะ";return}btn.disabled=true;
  try{if(!file){if(!/^https?:\/\//.test(url))throw new Error("ลิงก์ไม่ถูกต้อง");await api("/clips",{method:"POST",body:JSON.stringify({url,title,artist,platform:detect(url).platform})})}
   else{if(!/^video\//.test(f2t(file)))throw new Error("รองรับเฉพาะไฟล์วิดีโอ");const dur=await vidDur(file);if(dur>181)throw new Error("วิดีโอยาวเกิน 3 นาที");
-   setProg("กำลังเตรียมคลิป",0);let up=file;try{const c=await compressVideo(file,dur,q=>setProg("กำลังเตรียมคลิป",q*30),ctx);if(c&&c.size<file.size)up=c}catch(e){console.log("compress skipped",e)}
+   setProg("กำลังเตรียมคลิป",0);let up=file;try{let c=null;try{c=await compressFast(file,dur,q=>setProg("กำลังเตรียมคลิป",q*30))}catch(e){console.log("webcodecs skipped",e)}if(!c)c=await compressVideo(file,dur,q=>setProg("กำลังเตรียมคลิป",q*30),ctx);if(c&&c.size<file.size)up=c}catch(e){console.log("compress skipped",e)}
    if(up.size>100e6)throw new Error("ไฟล์ใหญ่เกิน 100MB");await driveUpload(up,file.name,title,artist,q=>setProg("กำลังอัปโหลด",30+q*70))}
   setProg("โพสต์แล้ว",100);$("#cst").textContent="โพสต์แล้ว ✓";await loadVideos();buildFeed(0);setTimeout(()=>{$("#cmp").style.display="none";mePage()},900)}
  catch(e){s.textContent="ผิดพลาด: "+e.message;$("#cbar").style.display="none"}finally{btn.disabled=false;ctx?.close?.().catch(()=>{})}}
 const f2t=f=>f.type||(/\.(mov|mp4|m4v|webm)$/i.test(f.name)?"video/mp4":"");
 // re-encode on device: canvas (<=720p) + WebAudio -> MediaRecorder (MP4/H.264 on iOS Safari & recent Chrome). Real-time; falls back to the original.
+// fast path: WebCodecs (H.264 + AAC) + vendored mp4-muxer, faster than real time (video replayed muted at 3x); moov at start
+const loadMuxer=()=>window.Mp4Muxer?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement("script");s.src="mp4-muxer.min.js";s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+async function compressFast(file,dur,onp){
+ if(!window.VideoEncoder||!window.AudioEncoder||!window.VideoFrame||!window.AudioData||file.size<2e6)return null;
+ const v=document.createElement("video");v.src=URL.createObjectURL(file);v.muted=true;v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";
+ await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("decode"))});
+ const k=Math.min(1,480/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2,FPS=24;
+ const vc={codec:"avc1.42E01F",width:W,height:H,bitrate:650000,framerate:FPS,avc:{format:"avc"},latencyMode:"realtime"};
+ if(!(await VideoEncoder.isConfigSupported(vc)).supported){delete vc.latencyMode;if(!(await VideoEncoder.isConfigSupported(vc)).supported)return null}
+ // audio: decode the whole track (fast), then encode AAC 64k
+ let ab=null;if(!window.YM_TEST_NOAUDIO)try{const AC=window.OfflineAudioContext||window.webkitOfflineAudioContext;ab=await new AC(2,44100,44100).decodeAudioData(await file.arrayBuffer())}catch(e){ab=null}
+ const ch=ab?Math.min(2,ab.numberOfChannels):0,sr=ab?ab.sampleRate:0,acfg=ab&&{codec:"mp4a.40.2",sampleRate:sr,numberOfChannels:ch,bitrate:64000};
+ if(ab&&!(await AudioEncoder.isConfigSupported(acfg)).supported)return null; // keep audio: fall back to MediaRecorder
+ await loadMuxer();const M=window.Mp4Muxer;
+ const mux=new M.Muxer({target:new M.ArrayBufferTarget(),video:{codec:"avc",width:W,height:H,frameRate:FPS},audio:ab?{codec:"aac",numberOfChannels:ch,sampleRate:sr}:undefined,fastStart:"in-memory",firstTimestampBehavior:"offset"});
+ let err=null;const ve=new VideoEncoder({output:(c,m)=>mux.addVideoChunk(c,m),error:e=>err=e});ve.configure(vc);
+ let ae=null;if(ab){ae=new AudioEncoder({output:(c,m)=>mux.addAudioChunk(c,m),error:e=>err=e});ae.configure(acfg);
+  const N=ab.length,step=sr;for(let o=0;o<N;o+=step){const n=Math.min(step,N-o),buf=new Float32Array(n*ch);for(let c=0;c<ch;c++)buf.set(ab.getChannelData(c).subarray(o,o+n),c*n);
+   const d=new AudioData({format:"f32-planar",sampleRate:sr,numberOfFrames:n,numberOfChannels:ch,timestamp:Math.round(o/sr*1e6),data:buf});ae.encode(d);d.close()}}
+ const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");let last=-1,n=0;const T=dur||v.duration;
+ v.playbackRate=2;await v.play();
+ await new Promise(ok=>{let to=setTimeout(ok,(T/1.5+8)*1000);const tick=(now,meta)=>{if(err){clearTimeout(to);return ok()}
+   const t=meta?meta.mediaTime:v.currentTime;if(t-last>=1/FPS-0.004&&ve.encodeQueueSize<8){g.drawImage(v,0,0,W,H);const f=new VideoFrame(cv,{timestamp:Math.round(t*1e6),duration:Math.round(1e6/FPS)});ve.encode(f,{keyFrame:n%(FPS*2)==0});f.close();last=t;n++}
+   onp(Math.min(.99,t/T));if(v.ended){clearTimeout(to);return ok()}v.requestVideoFrameCallback?v.requestVideoFrameCallback(tick):requestAnimationFrame(()=>tick(0,null))};
+  v.onended=()=>{clearTimeout(to);setTimeout(ok,50)};v.requestVideoFrameCallback?v.requestVideoFrameCallback(tick):requestAnimationFrame(()=>tick(0,null))});
+ v.pause();URL.revokeObjectURL(v.src);if(err)throw err;if(last<T*0.9)throw new Error("frames "+last+"/"+T);
+ await ve.flush();if(ae)await ae.flush();mux.finalize();const out=new File([mux.target.buffer],file.name.replace(/\.\w+$/,"")+"_480.mp4",{type:"video/mp4"});onp(1);return out.size>1000?out:null}
 async function compressVideo(file,dur,onp,ctx){
  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return null;
  const saf=/Safari/.test(navigator.userAgent)&&!/Chrome|CriOS|Chromium|Android|FxiOS|Edg/.test(navigator.userAgent); // Safari's plain video/mp4 = H.264+AAC
  const mt=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1.4D401F,mp4a.40.2","video/mp4;codecs=avc1,mp4a.40.2"].concat(saf?["video/mp4"]:[]).find(t=>MediaRecorder.isTypeSupported(t));if(!mt)return null; // webm would not play on iPhone
- if(file.size<3e6)return null; // already small
+ if(file.size<2e6)return null; // already small
  const v=document.createElement("video");v.src=URL.createObjectURL(file);v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";
  await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("decode"))});
- const k=Math.min(1,540/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2;
+ const k=Math.min(1,480/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2;
  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");const vs=cv.captureStream(30);
  if(ctx){try{const src=ctx.createMediaElementSource(v),dst=ctx.createMediaStreamDestination();src.connect(dst);dst.stream.getAudioTracks().forEach(t=>vs.addTrack(t));await ctx.resume()}catch(e){v.muted=true}}else v.muted=true;
- const rec=new MediaRecorder(vs,{mimeType:mt,videoBitsPerSecond:1000000,audioBitsPerSecond:96000}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+ const rec=new MediaRecorder(vs,{mimeType:mt,videoBitsPerSecond:650000,audioBitsPerSecond:64000}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
  const done=new Promise(ok=>rec.onstop=ok);let live=true;
  const draw=()=>{if(!live)return;g.drawImage(v,0,0,W,H);onp(Math.min(1,v.currentTime/(dur||v.duration||1)));v.requestVideoFrameCallback?v.requestVideoFrameCallback(draw):requestAnimationFrame(draw)};
  rec.start(1000);await v.play();draw();
  await new Promise(ok=>{v.onended=ok;setTimeout(ok,(dur+5)*1000)});live=false;rec.stop();await done;URL.revokeObjectURL(v.src);
- const b=new Blob(ch,{type:mt.split(";")[0]});return b.size>1000?new File([b],file.name.replace(/\.\w+$/,"")+"_540.mp4",{type:"video/mp4"}):null}
+ const b=new Blob(ch,{type:mt.split(";")[0]});return b.size>1000?new File([b],file.name.replace(/\.\w+$/,"")+"_480.mp4",{type:"video/mp4"}):null}
 function grabPoster(file){return new Promise(ok=>{const v=document.createElement("video");v.muted=true;v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";v.src=URL.createObjectURL(file);
  const fin=x=>{URL.revokeObjectURL(v.src);ok(x)};setTimeout(()=>fin(""),6000);
  v.onloadeddata=()=>{v.currentTime=Math.min(0.1,(v.duration||1)/2)};v.onseeked=()=>{try{const k=360/Math.max(1,v.videoWidth),c=document.createElement("canvas");c.width=360;c.height=Math.round(v.videoHeight*k);c.getContext("2d").drawImage(v,0,0,c.width,c.height);let q=.7,u=c.toDataURL("image/jpeg",q);while(u.length>80000&&q>.3){q-=.15;u=c.toDataURL("image/jpeg",q)}fin(u)}catch(e){fin("")}};v.onerror=()=>fin("")})}
