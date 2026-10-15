@@ -122,3 +122,7 @@ body.offfeed #top{background:linear-gradient(180deg,rgba(8,4,31,.94),rgba(8,4,31
 #amb i:nth-child(2){background:radial-gradient(circle,var(--a2),transparent 68%)}
 #amb i:nth-child(3){background:radial-gradient(circle,var(--a3),transparent 68%)}
 .post .glow{filter:blur(28px) saturate(1.2) brightness(.65)!important;transform:translateZ(0) scale(1.1)}
+
+.tbadge{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 100px);z-index:7;pointer-events:none;font:700 14px Prompt;color:#2fe0ff;text-shadow:0 0 12px rgba(47,224,255,.8)}
+.tbadge.big{font-size:26px;color:#ffc83d;text-shadow:0 0 18px rgba(255,200,61,.9),0 0 40px rgba(255,47,179,.6)}
+#np .dj{background:linear-gradient(135deg,#ffc400,#ff2fb3)!important}

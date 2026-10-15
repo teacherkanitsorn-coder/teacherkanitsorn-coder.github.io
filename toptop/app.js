@@ -60,7 +60,7 @@ let pinT=null;let pinned=false;function pinFeed(){const f=$("#feed");if(!cur)ret
 function heart(d,x,e){if(!tok){toast("สมัครฟรีก่อน แล้วกดหัวใจได้ไม่จำกัด");return go("me")}if(x.expires<=now())return toast("รูปนี้หมดเวลาแล้ว");pinFeed();
  if(CB.pid!=x.id){endBoost();CB.pid=x.id;CB.streak=0}const boost=Date.now()<CB.until,add=boost?100:1;
  tapFX(e.clientX,e.clientY,add,boost);const sp=d.querySelector(".sp .bub");sp.animate&&sp.animate([{transform:"scale(1)"},{transform:"scale(1.15)"},{transform:"scale(1)"}],{duration:160});hint(boost);
- x.hearts+=add;x.expires+=add*MSH;if(boost){hq(x.id,0,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{hq(x.id,1,0);if(++CB.streak>=100)startBoost()}paintOne(d,x)}
+ const h0=Math.floor(x.hearts/1e4);x.hearts+=add;x.expires+=add*MSH;if(Math.floor(x.hearts/1e4)>h0)hourFX(d);else gainFX(d,add);if(boost){hq(x.id,0,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{hq(x.id,1,0);if(++CB.streak>=100)startBoost()}paintOne(d,x)}
 let p1=0;function paintOne(d,x){if(p1)return;p1=requestAnimationFrame(()=>{p1=0;const nh=d.querySelector(".nh");if(nh)nh.textContent=nf(x.hearts);const tl=d.querySelector(".tl");if(tl)tl.textContent=left(x.expires-now())})}
 let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";document.body.appendChild(h)}
  if(boost){h.style.display="none";return}if(!h._b){h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b></b><i></i>`;h._b=h.querySelector("b");h._i=h.querySelector("i")}const s=Math.min(CB.streak+1,100);h._b.textContent=s+"/100";h._i.style.transform=`scaleX(${s/100})`;if(h.style.display!="block")h.style.display="block";clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
@@ -110,20 +110,32 @@ function closeSheet(){$("#sheet").className="glass";clearInterval(chatT)}
 // ---------- music: admin DJ playlist, audio-only hidden YouTube player, loops in order ----------
 let PLS=[],PLI=ls.get("tt_pli",0),YTP=null,musicMuted=ls.get("tt_mute",false),started=sessionStorage.tt_started=="1";
 const ytc=(fn,args=[])=>YTP?.contentWindow?.postMessage(JSON.stringify({event:"command",func:fn,args}),"*");
-async function music(){PLS=await api("/playlist").catch(()=>[]);if(!PLS.length){$("#np").className="";if(YTP){ytc("stopVideo")}return}PLI=PLI%PLS.length;
+let RAD=null,radT=null,curYid=null,ytState=-1,durSent={};
+async function music(){const j=await api("/radio").catch(()=>null);if(!j||!j.tracks.length){PLS=[];RAD=null;$("#np").className="";YTP&&ytc("stopVideo");return}
+ RAD={start:j.start,off:j.now-Date.now()};PLS=j.tracks;radioPlay()}
+function radPos(){const t=Date.now()+RAD.off,L=PLS.map(x=>(x.dur||240)*1000),tot=L.reduce((a,b)=>a+b,0);let o=((t-RAD.start)%tot+tot)%tot;
+ for(let i=0;i<L.length;i++){if(o<L[i])return{i,off:o/1000,rem:(L[i]-o)/1000};o-=L[i]}return{i:0,off:0,rem:L[0]/1000}}
+function radioPlay(){if(!RAD||!PLS.length)return;const p=radPos();PLI=p.i;const s=PLS[p.i];
  if(!YTP){const w=document.createElement("div");w.style.cssText="position:fixed;left:-2px;bottom:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none;z-index:-1";
   const f=document.createElement("iframe");f.allow="autoplay;encrypted-media";f.setAttribute("playsinline","");f.width=200;f.height=200;
-  f.src=`https://www.youtube.com/embed/${PLS[PLI].yid}?autoplay=1&mute=1&playsinline=1&controls=0&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-  f.onload=()=>{f.contentWindow.postMessage('{"event":"listening","id":1}',"*");ytc("playVideo");if(started&&!musicMuted)setTimeout(()=>ytc("unMute"),150)};w.appendChild(f);document.body.appendChild(w);YTP=f}
- paintNp()}
-function nextSong(){if(!PLS.length)return;PLI=(PLI+1)%PLS.length;ls.set("tt_pli",PLI);if(PLS.length==1)ytc("seekTo",[0,true]);else ytc("loadVideoById",[{videoId:PLS[PLI].yid,startSeconds:0}]);ytc("playVideo");if(started&&!musicMuted)ytc("unMute");paintNp()}
-addEventListener("message",e=>{if(!/youtube/.test(e.origin)||!YTP||e.source!==YTP.contentWindow)return;try{const j=JSON.parse(e.data),s=j.info?.playerState;if(s===0)nextSong();if(s===-1||s===5)ytc("playVideo")}catch(x){}});
+  f.src=`https://www.youtube.com/embed/${s.yid}?autoplay=1&mute=1&playsinline=1&controls=0&enablejsapi=1&start=${Math.floor(p.off)}&origin=${encodeURIComponent(location.origin)}`;
+  f.onload=()=>{f.contentWindow.postMessage('{"event":"listening","id":1}',"*");setTimeout(()=>{const q=radPos();ytc("seekTo",[q.off,true]);ytc("playVideo");if(started&&!musicMuted)ytc("unMute")},400)};w.appendChild(f);document.body.appendChild(w);YTP=f}
+ else if(curYid!=s.yid)ytc("loadVideoById",[{videoId:s.yid,startSeconds:p.off}]);else ytc("seekTo",[p.off,true]);
+ curYid=s.yid;ytc("playVideo");if(started&&!musicMuted)ytc("unMute");paintNp();clearTimeout(radT);radT=setTimeout(radioPlay,Math.max(1,p.rem+.4)*1000);
+ clearTimeout(radioPlay.ck);radioPlay.ck=setTimeout(()=>{if(started&&!musicMuted&&ytState!==1&&!document.hidden)listenTap()},3500)}
+function nextSong(){radioPlay()}
+addEventListener("message",e=>{if(!/youtube/.test(e.origin)||!YTP||e.source!==YTP.contentWindow)return;try{const j=JSON.parse(e.data),i=j.info||{};
+ if(i.playerState!=null){ytState=i.playerState;if(i.playerState===0)radioPlay();if(i.playerState===1)$("#tts.lt")?.remove()}
+ const s=PLS[PLI];if(s&&!s.dur&&i.duration>20&&!durSent[s.id]){durSent[s.id]=1;fetch(API+"/radio/dur",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:s.id,dur:i.duration})}).then(()=>music())}}catch(x){}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)music()});addEventListener("pageshow",e=>{if(e.persisted)music()});
+function listenTap(){if($("#tts"))return;const t=document.createElement("div");t.id="tts";t.className="lt";t.innerHTML=`<div class="pl">${I("vol")}</div><b>แตะเพื่อฟังเพลง</b><span>${esc(PLS[PLI]?.title||"")}</span>`;
+ t.onclick=()=>{t.remove();markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");radioPlay()};document.body.appendChild(t)}
 function paintNp(){const n=$("#np");if(!PLS.length){n.className="";return}const s=PLS[PLI];n.className="glass on"+(musicMuted||!started?" mute":"");
- n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector("button").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
-function setMusicMute(m){musicMuted=m;ls.set("tt_mute",m);markStarted();ytc(m?"mute":"unMute");ytc("playVideo");paintNp()}
+ n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button class="dj" aria-label="ขอเพลง" onclick="event.stopPropagation();djOpen()">${I("music")}</button><button class="mu" aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector(".mu").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
+function setMusicMute(m){musicMuted=m;ls.set("tt_mute",m);markStarted();ytc(m?"mute":"unMute");if(!m)radioPlay();else paintNp()}
 function markStarted(){started=true;sessionStorage.tt_started="1";$("#tts")?.remove()}
 function tapToStart(){if(started||$("#tts")||!PLS.length)return;const t=document.createElement("div");t.id="tts";t.innerHTML=`<img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-splash.png" width="180" style="filter:drop-shadow(0 16px 50px rgba(255,47,179,.5))" alt=""><div class="pl">${I("play","f")}</div><b>แตะเพื่อเริ่ม</b><span>พร้อมเพลงประกอบ</span>`;
- t.onclick=()=>{markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");ytc("playVideo");paintNp()};document.body.appendChild(t)}
+ t.onclick=()=>{markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");radioPlay()};document.body.appendChild(t)}
 // ---------- photo pipeline: compress on phone (<=1080px JPEG ~200-400KB) -> Drive bridge ----------
 async function loadBitmap(file){try{return await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){}
  try{return await createImageBitmap(file)}catch(e){}
@@ -192,11 +204,21 @@ async function logout(){await api("/logout",{method:"POST"}).catch(()=>{});tok=n
 async function blockUser(id,on){if(on&&!confirm("บล็อกสมาชิกนี้? จะไม่เห็นข้อความจากกันอีก"))return;await api("/block",{method:"POST",body:JSON.stringify({id,on})}).catch(e=>toast(e.message));toast(on?"บล็อกแล้ว":"ยกเลิกบล็อกแล้ว");$("#ov").style.display="none";closeSheet()}
 async function reportUser(id){const r=prompt("รายงานสมาชิกนี้ เพราะอะไร?");if(r==null)return;await api("/report",{method:"POST",body:JSON.stringify({id,reason:r})}).then(()=>toast("ส่งรายงานถึงแอดมินแล้ว ขอบคุณค่ะ")).catch(e=>toast(e.message))}
 // ---------- admin: DJ playlist + reports ----------
-async function admin(){const a=$("#adm");if(!a)return;const [pl,rp]=await Promise.all([api("/playlist").catch(()=>[]),api("/admin/reports").catch(()=>[])]);
- a.innerHTML=`<h3>${I("music")} เพลย์ลิสต์ (ดีเจ)</h3><p class="m">ทุกคนได้ยินเพลงตามลำดับนี้ วนซ้ำ · มีเพลงเดียว = เล่นซ้ำเพลงนั้น</p>
-  ${pl.map((s,i)=>`<div class="row"><div class="rk">${i+1}</div><div class="t"><div>${esc(s.title)}</div><div class="m">${esc(s.yid)}</div></div><button class="x" onclick="plMove(${i},-1)">${I("up")}</button><button class="x" onclick="plMove(${i},1)">${I("down")}</button><button class="x" onclick="plDel(${s.id})">${I("x")}</button></div>`).join("")||'<p class="m">ยังไม่มีเพลง</p>'}
-  <input id="plu" placeholder="วางลิงก์ YouTube"><button class="btn" onclick="plAdd()">+ เพิ่มเพลง</button><h3>${I("flag")} รายงานจากสมาชิก</h3>${rp.map(r=>`<div class="row"><div class="t"><div>${esc(r.reporter_name)} → ${esc(r.target_name)}</div><div class="m">${esc(r.reason)}</div></div></div>`).join("")||'<p class="m">ไม่มีรายงาน</p>'}`;a._pl=pl}
-async function plAdd(){try{await api("/admin/playlist",{method:"POST",body:JSON.stringify({url:$("#plu").value})});toast("เพิ่มเพลงแล้ว");admin();music()}catch(e){toast(e.message)}}
+async function admin(){const a=$("#adm");if(!a)return;const [pl,rp,dq,cat]=await Promise.all([api("/playlist").catch(()=>[]),api("/admin/reports").catch(()=>[]),api("/admin/dj").catch(()=>[]),api("/admin/catalog").catch(()=>[])]);
+ a.innerHTML=`<h3>${I("music")} คำขอเพลง 5 บาท (${dq.length})</h3>${dq.map(r=>`<div class="row"><div class="t"><div>${esc(r.title)}</div><div class="m">${esc(r.name)} · ${r.ref} · <a href="https://drive.google.com/file/d/${r.slip}/view" target="_blank" style="color:#2fe0ff">ดูสลิป</a></div></div><button class="x" onclick="djOk(${r.id},1)">✓</button><button class="x" onclick="djOk(${r.id},0)">${I("x")}</button></div>`).join("")||'<p class="m">ไม่มีคำขอรอตรวจ</p>'}
+  <h3>${I("music")} เพลย์ลิสต์ (วิทยุ เล่นตรงกันทุกเครื่อง)</h3><p class="m">ทุกคนได้ยินเพลงเดียวกัน ณ วินาทีเดียวกัน วนซ้ำ · เลือกได้เฉพาะเพลงในคลังพอดีม่วน</p>
+  ${pl.map((s,i)=>`<div class="row"><div class="rk">${i+1}</div><div class="t"><div>${esc(s.title)}</div></div><button class="x" onclick="plMove(${i},-1)">${I("up")}</button><button class="x" onclick="plMove(${i},1)">${I("down")}</button><button class="x" onclick="plDel(${s.id})">${I("x")}</button></div>`).join("")||'<p class="m">ยังไม่มีเพลง</p>'}
+  <select id="plc" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.18);font:15px Prompt;margin:6px 0">${cat.filter(c=>c.active).map(c=>`<option value="${c.id}" style="color:#000">${esc(c.title)}</option>`).join("")}</select><button class="btn" onclick="plAdd()">+ เพิ่มเข้าเพลย์ลิสต์</button>
+  <details class="more"><summary>${I("menu")} คลังเพลงพอดีม่วน (${cat.filter(c=>c.active).length} เพลง) — เพิ่ม/แก้/ลบ</summary>
+   <input id="ctu" placeholder="ลิงก์ YouTube (เวอร์ชันเต็ม ไม่ใช่ MV)"><input id="ctt" placeholder="ชื่อเพลง (ไม่บังคับ)"><button class="btn" onclick="ctAdd()">+ เพิ่มเข้าคลัง</button>
+   ${cat.map(c=>`<div class="row" style="${c.active?"":"opacity:.45"}"><div class="t"><div>${esc(c.title)}</div><div class="m">${c.yid}</div></div><button class="x" onclick="ctEdit(${c.id})">✎</button><button class="x" onclick="ctToggle(${c.id},${c.active?0:1})">${c.active?"ซ่อน":"แสดง"}</button><button class="x" onclick="ctDel(${c.id})">${I("x")}</button></div>`).join("")}</details>
+  <h3>${I("flag")} รายงานจากสมาชิก</h3>${rp.map(r=>`<div class="row"><div class="t"><div>${esc(r.reporter_name)} → ${esc(r.target_name)}</div><div class="m">${esc(r.reason)}</div></div></div>`).join("")||'<p class="m">ไม่มีรายงาน</p>'}`;a._pl=pl}
+async function plAdd(){try{await api("/admin/playlist",{method:"POST",body:JSON.stringify({cid:+$("#plc").value})});toast("เพิ่มเพลงแล้ว");admin();music()}catch(e){toast(e.message)}}
+async function djOk(id,ok){try{await api("/admin/dj",{method:"POST",body:JSON.stringify({id,ok:!!ok})});toast(ok?"อนุมัติแล้ว เพลงจะเล่นต่อจากเพลงนี้":"ปฏิเสธแล้ว");admin();music()}catch(e){toast(e.message)}}
+async function ctAdd(){try{await api("/admin/catalog",{method:"POST",body:JSON.stringify({url:$("#ctu").value,title:$("#ctt").value})});DJC=null;toast("เพิ่มเข้าคลังแล้ว");admin()}catch(e){toast(e.message)}}
+async function ctEdit(id){const t=prompt("ชื่อเพลงใหม่");if(t){await api("/admin/catalog",{method:"PUT",body:JSON.stringify({id,title:t})});DJC=null;admin()}}
+async function ctToggle(id,on){await api("/admin/catalog",{method:"PUT",body:JSON.stringify({id,active:!!on})});DJC=null;admin()}
+async function ctDel(id){if(confirm("ลบเพลงนี้ออกจากคลัง?")){await api("/admin/catalog",{method:"DELETE",body:JSON.stringify({id})});DJC=null;admin()}}
 async function plDel(id){await api("/admin/playlist",{method:"DELETE",body:JSON.stringify({id})});admin();music()}
 async function plMove(i,d){const pl=$("#adm")._pl,j=i+d;if(j<0||j>=pl.length)return;[pl[i],pl[j]]=[pl[j],pl[i]];await api("/admin/playlist",{method:"PUT",body:JSON.stringify({order:pl.map(s=>s.id)})});admin();music()}
 // ---------- สนทนา: 1:1 chat (polling every 3 s while open) ----------
@@ -229,3 +251,30 @@ function go(p){tab=p;document.querySelectorAll("#nav a").forEach(a=>a.classList.
 function sortBar(){let s=$(".sort");if(!s){s=document.createElement("div");s.className="sort glass";document.body.appendChild(s)}
  s.innerHTML=`<span class="${sortBy!="new"?"on":""}" data-s="time">เวลาเหลือ</span><span class="${sortBy=="new"?"on":""}" data-s="new">ใหม่ล่าสุด</span>`;s.querySelectorAll("span").forEach(x=>x.onclick=async()=>{sortBy=x.dataset.s;ls.set("tt_sort",sortBy);sortBar();await loadFeed();buildFeed()})}
 (async()=>{await loadFeed();const m=location.hash.match(/p=([\w-]+)/);go("home");buildFeed(m?m[1]:null);if(tok)refreshUnread();await music();tapToStart()})();
+
+// ---------- time-added FX: big pop at each +1 ชม. (every 10,000 hearts), light pulse otherwise ----------
+let gT=0;function gainFX(d,add){const t=performance.now();if(t-gT<(add>1?120:260))return;gT=t;const tm=d.querySelector(".timer");tm&&tm.animate&&tm.animate([{boxShadow:"0 0 0 0 rgba(47,224,255,0)"},{boxShadow:`0 0 ${add>1?26:14}px 2px rgba(47,224,255,.75)`},{boxShadow:"0 0 0 0 rgba(47,224,255,0)"}],{duration:add>1?420:300});
+ if(add>1)floatBadge(d,"+"+Math.round(add*MSH/1000)+" วิ",false)}
+function hourFX(d){const tm=d.querySelector(".timer");if(tm&&tm.animate)tm.animate([{transform:"translateX(-50%) scale(1)",boxShadow:"0 0 0 rgba(255,200,61,0)"},{transform:"translateX(-50%) scale(1.28)",boxShadow:"0 0 40px 6px rgba(255,200,61,.95)",offset:.3},{transform:"translateX(-50%) scale(1)",boxShadow:"0 0 0 rgba(255,200,61,0)"}],{duration:900,easing:"cubic-bezier(.2,.9,.3,1.2)"});
+ floatBadge(d,"+1 ชม.",true);navigator.vibrate&&navigator.vibrate(25)}
+function floatBadge(d,txt,big){const b=document.createElement("div");b.className="tbadge"+(big?" big":"");b.textContent=txt;d.appendChild(b);
+ const an=b.animate([{transform:"translate(-50%,0) scale(.6)",opacity:0},{transform:"translate(-50%,-14px) scale(1.1)",opacity:1,offset:.2},{transform:`translate(-50%,-${big?70:40}px) scale(1)`,opacity:0}],{duration:big?1400:800,easing:"ease-out"});an.onfinish=()=>b.remove()}
+// ---------- ขอเพลง (DJ 5฿): pick from the พอดีม่วน catalog -> transfer 5฿ via QR -> slip -> admin approval ----------
+let DJC=null;async function djOpen(){if(!tok){toast("สมัครฟรีก่อน แล้วขอเพลงได้");return go("me")}const s=$("#sheet");s.className="glass on full";
+ s.innerHTML=`<div class="hd"><b>${I("music")} ขอเพลง 5 บาท</b><button onclick="closeSheet()">${I("x")}</button></div><div class="bd" id="djb"><p class="m">เลือกเพลงจากคลังเพลงค่ายพอดีม่วน (เวอร์ชันเต็ม) แล้วโอน 5 บาท แอดมินตรวจสลิปแล้วเพลงจะเล่นต่อจากเพลงปัจจุบันให้ทุกคนฟัง</p>
+ <input id="djq" placeholder="ค้นหาเพลง หรือชื่อศิลปิน" oninput="djList()"><div id="djl"><p class="m">กำลังโหลด...</p></div><div id="djmine"></div></div>`;
+ DJC=DJC||await api("/catalog").catch(()=>[]);djList();const mine=await api("/dj/mine").catch(()=>[]);if(mine.length)$("#djmine").innerHTML="<h3>คำขอของฉัน</h3>"+mine.map(r=>`<div class="row"><div class="t"><div>${esc(r.title)}</div><div class="m">${r.ref} · ${{pending:"รอตรวจสลิป",approved:"อนุมัติแล้ว ✓",rejected:"ไม่อนุมัติ"}[r.status]||r.status}</div></div></div>`).join("")}
+function djList(){const q=($("#djq")?.value||"").trim().toLowerCase(),L=(DJC||[]).filter(c=>!q||c.title.toLowerCase().includes(q)).slice(0,80);
+ $("#djl").innerHTML=L.map(c=>`<a class="row" onclick="djPick(${c.id})"><img src="https://i.ytimg.com/vi/${c.yid}/default.jpg" alt=""><div class="t"><div>${esc(c.title)}</div><div class="m">${c.dur?Math.floor(c.dur/60)+":"+String(c.dur%60).padStart(2,"0"):""}</div></div>${I("plus")}</a>`).join("")||'<p class="m">ไม่พบเพลง</p>'}
+async function djPick(cid){const b=$("#djb");try{const r=await api("/dj",{method:"POST",body:JSON.stringify({cid})});
+ b.innerHTML=`<h3 style="margin-top:4px">${esc(r.title)}</h3><div class="card" style="text-align:center"><div style="font:700 30px Prompt;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent">โอน ${r.price} บาท</div>
+  <img src="${API}/icons/pp-qr.jpg" alt="PromptPay QR" style="width:min(78vw,320px);border-radius:16px;margin:10px auto;display:block;background:#fff">
+  <p class="m">ชื่อบัญชี นาย ชนะชัย แก้วกัญญา · สแกนด้วยแอปธนาคาร ใส่ยอด <b>${r.price} บาท</b> เอง</p>
+  <p>รหัสอ้างอิง (ใส่ในบันทึกช่วยจำตอนโอน)</p><div style="font:700 26px Inter,Prompt;letter-spacing:2px;user-select:all" onclick="navigator.clipboard&&navigator.clipboard.writeText('${r.ref}');toast('คัดลอกแล้ว')">${r.ref}</div></div>
+  <label class="pick" for="djs" id="djsv" style="height:24dvh">${I("up")}<b>แนบสลิปการโอน (จำเป็น)</b></label><input type="file" id="djs" accept="image/*" hidden>
+  <div class="prog" id="djbar" style="display:none"><i></i></div><div class="m" id="djst"></div><button class="btn w" id="djgo">ส่งสลิปให้แอดมินตรวจ</button>`;
+ let f=null;$("#djs").onchange=e=>{f=e.target.files[0];if(f)$("#djsv").innerHTML=`<img src="${URL.createObjectURL(f)}" alt="">`};
+ $("#djgo").onclick=async()=>{const st=$("#djst");if(!f)return st.textContent="กรุณาแนบสลิปก่อน";const bt=$("#djgo");bt.disabled=true;$("#djbar").style.display="block";
+  try{st.textContent="กำลังเตรียมสลิป...";const c=await compressImage(f,1280,400e3);const d=await driveSend(c.blob,q=>{$("#djbar").firstChild.style.width=Math.round(q*100)+"%";st.textContent="กำลังส่ง "+Math.round(q*100)+"%"});
+   await api("/dj/slip",{method:"POST",body:JSON.stringify({id:r.id,drive:d})});b.innerHTML=`<div class="empty" style="height:auto;padding:40px 10px"><h2>ส่งแล้ว ✓</h2><p>แอดมินจะตรวจสลิป แล้วเพลง "${esc(r.title)}" จะเล่นต่อจากเพลงปัจจุบัน</p><p class="m">อ้างอิง ${r.ref}</p><button class="btn" onclick="closeSheet()">ตกลง</button></div>`}
+  catch(e){st.textContent="ผิดพลาด: "+e.message;bt.disabled=false}}}catch(e){toast(e.message)}}
