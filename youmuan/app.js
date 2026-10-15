@@ -6,7 +6,7 @@ const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return 
 const P={bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>',home:'<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>',fire:'<path d="M12 22c4 0 7-2.8 7-7 0-4-3-6.5-4-10-2 2-2.5 4-2.5 5.5C11 9 10 7.5 10 5 7 7.5 5 11 5 15c0 4.2 3 7 7 7z"/>',
 gift:'<rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M3 12h18M12 8v13M12 8S10.5 3 7.8 3.6C5.5 4.1 6.6 8 12 8zm0 0s1.5-5 4.2-4.4C18.5 4.1 17.4 8 12 8z"/>',
 trophy:'<path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9 18h6"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/>',
-search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',
 heart:'<path d="M12 20.5S3 15 3 8.8A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 9 2.8C21 15 12 20.5 12 20.5z"/>',
 hearts:'<path d="M9 18.5S2.5 14.5 2.5 9.8a3.6 3.6 0 0 1 6.5-2 3.6 3.6 0 0 1 6.5 2"/><path d="M15.5 21s-5-3.2-5-6.8a2.8 2.8 0 0 1 5-1.6 2.8 2.8 0 0 1 5 1.6c0 3.6-5 6.8-5 6.8z"/>',
 chat:'<path d="M20 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>',share:'<path d="M14 4l7 7-7 7M21 11H10a6 6 0 0 0-6 6v3"/>',
@@ -251,17 +251,71 @@ async function mePage(){const p=$("#p-me");
   const li=()=>{$("#af").innerHTML=`<input id="fl" placeholder="เบอร์โทรหรืออีเมล" autocomplete="username"><input id="fp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"><button class="btn" style="width:100%" id="go">เข้าสู่ระบบ</button>`;
    $("#go").onclick=()=>auth("/login",{login:$("#fl").value,password:$("#fp").value})};
   $("#tS").onclick=()=>{$("#tS").classList.add("on");$("#tL").classList.remove("on");su()};$("#tL").onclick=()=>{$("#tL").classList.add("on");$("#tS").classList.remove("on");li()};su();return}
- await refreshMe();if(!me)return mePage();const mem=["singer","admin"].includes(me.role);
- p.innerHTML=head(esc(me.name),`${esc(me.tier)}${mem?" · ศิลปินในค่าย":""}`)+`<div class="stat"><div><b>${nf(me.points)}</b><span>แต้มสะสม</span></div><div><b>${nf(me.hearts)}</b><span>ซุปเปอร์หัวใจ</span></div><div><b>${nf(me.today)}/${me.rules.dailyPointCap}</b><span>แต้มวันนี้</span></div></div>
- <div class="note">ดูครบ ${me.rules.secsPerPoint} วินาที = 1 แต้มสะสม · ดูจนจบ +${me.rules.completeBonus} · สูงสุด ${me.rules.dailyPointCap} แต้ม/วัน<br>ระดับ: ${me.tiers.map(t=>t[1]+" ("+t[0]+" หัวใจ)").join(" · ")}<br>ลิงก์แชร์ของคุณจะติดรหัส ${esc(me.ref)} อัตโนมัติ</div>
- ${mem?`${upBox("")}<h3>หรือ เพิ่มคลิปจากลิงก์</h3><p class="m">วางลิงก์จาก YouTube, Shorts, TikTok, Facebook, Instagram หรือไฟล์ mp4 ระบบจะเครดิตเป็นชื่อ ${esc(me.singer_name||me.name)}</p><input id="ul" placeholder="https://..." oninput="$('#up').textContent=this.value?'แพลตฟอร์ม: '+PL[detect(this.value).platform]:''"><div id="up" class="m"></div><input id="ut" placeholder="ชื่อคลิป / เพลง"><button class="btn" onclick="addLink()">เพิ่มคลิป</button><div id="us" class="m"></div>`:
-  `<h3>สมาชิกค่าย</h3><input id="pin" type="password" placeholder="รหัส PIN จากแอดมิน"><button class="btn o" onclick="pinLink()">ยืนยันเป็นศิลปิน</button>`}
- <h3>คลิปขอบคุณจากศิลปิน</h3>${me.claimable.map(c=>`<div class="row" onclick='celebrate(${JSON.stringify(c).replace(/'/g,"")})'><div class="t">ครบ ${nf(c.hearts)} หัวใจรัวให้ ${esc(c.artist)}<div class="m">แตะเพื่อรับสิทธิ์</div></div>${I("gift")}</div>`).join("")}
- ${me.myClaims.map(c=>`<div class="row" style="display:block"><div class="t">${esc(c.artist)}<div class="m">${c.reply_url?"ศิลปินส่งคลิปขอบคุณแล้ว":"รอศิลปินตอบกลับ"}</div></div>${c.reply_url?embedHtml(c.reply_url):""}</div>`).join("")}
- ${me.fanArtists.slice(0,5).map(f=>`<div class="m" style="margin:8px 0 4px">${esc(f.artist)} · ${nf(f.hearts)} / ${nf(me.milestone)} หัวใจรัว</div><div class="prog"><i style="width:${Math.min(100,f.hearts/me.milestone*100)}%"></i></div>`).join("")||(me.claimable.length||me.myClaims.length?"":'<p class="m">ส่งหัวใจรัวให้ศิลปินคนเดียวครบ 10,000 เพื่อรับคลิปขอบคุณ</p>')}
- <h3>ประวัติแต้ม</h3>${me.history.map(h=>`<div class="row"><div class="t">${h.kind=="watch"?"ดูคลิป":h.kind=="complete"?"ดูจนจบ":h.kind=="redeem"?"แลก "+esc(h.note):h.kind=="refund"?esc(h.note):esc(h.kind)}<div class="m">${h.day}</div></div><b>${h.delta>0?"+":""}${h.delta}</b></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
- <h3>การแลกของรางวัล</h3>${me.redemptions.map(r=>`<div class="row"><div class="t">${esc(r.reward)}<div class="m">${({pending:"รออนุมัติ",approved:"อนุมัติแล้ว",shipped:"จัดส่งแล้ว",rejected:"ไม่อนุมัติ (คืนแต้มแล้ว)"})[r.status]||r.status}</div></div></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
- ${me.role=="admin"?'<div id="adm"></div>':""}<p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="lnk m" onclick="showTerms()">ข้อกำหนดและ PDPA</a></p>`;if(me.role=="admin")admin();bell();if(me.claimable?.length)celebrate(me.claimable[0])}
+ await refreshMe();if(!me)return mePage();const mem=["singer","admin"].includes(me.role),sn=me.singer_name||me.name;
+ const fanBits=`<div class="stat"><div><b>${nf(me.points)}</b><span>แต้มสะสม</span></div><div><b>${nf(me.hearts)}</b><span>ซุปเปอร์หัวใจ</span></div><div><b>${me.tier?esc(me.tier):"-"}</b><span>ระดับ</span></div></div>
+  ${me.claimable.map(c=>`<div class="row" onclick='celebrate(${JSON.stringify(c).replace(/'/g,"")})'><div class="t">ครบ ${nf(c.hearts)} หัวใจรัวให้ ${esc(c.artist)}<div class="m">แตะเพื่อรับสิทธิ์</div></div>${I("gift")}</div>`).join("")}
+  ${me.myClaims.map(c=>`<div class="row" style="display:block"><div class="t">${esc(c.artist)}<div class="m">${c.reply_url?"ศิลปินส่งคลิปขอบคุณแล้ว":"รอศิลปินตอบกลับ"}</div></div>${c.reply_url?embedHtml(c.reply_url):""}</div>`).join("")}
+  ${me.fanArtists.slice(0,3).map(f=>`<div class="m" style="margin:8px 0 4px">${esc(f.artist)} · ${nf(f.hearts)} / ${nf(me.milestone)} หัวใจรัว</div><div class="prog"><i style="width:${Math.min(100,f.hearts/me.milestone*100)}%"></i></div>`).join("")}`;
+ const more=`<details class="more"><summary>${I("menu")}เมนูเพิ่มเติม</summary>
+  ${mem?`<h3>ซุปเปอร์แฟน</h3>${fanBits}`:""}
+  <h3>ประวัติแต้ม</h3>${me.history.slice(0,20).map(h=>`<div class="row"><div class="t">${h.kind=="watch"?"ดูคลิป":h.kind=="complete"?"ดูจนจบ":h.kind=="redeem"?"แลก "+esc(h.note):h.kind=="refund"?esc(h.note):esc(h.kind)}<div class="m">${h.day}</div></div><b>${h.delta>0?"+":""}${h.delta}</b></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
+  <h3>การแลกของรางวัล</h3>${me.redemptions.map(r=>`<div class="row"><div class="t">${esc(r.reward)}<div class="m">${({pending:"รออนุมัติ",approved:"อนุมัติแล้ว",shipped:"จัดส่งแล้ว",rejected:"ไม่อนุมัติ (คืนแต้มแล้ว)"})[r.status]||r.status}</div></div></div>`).join("")||'<p class="m">ยังไม่มี</p>'}
+  <div class="note">ดูครบ ${me.rules.secsPerPoint} วินาที = 1 แต้มสะสม · ดูจนจบ +${me.rules.completeBonus} · สูงสุด ${me.rules.dailyPointCap} แต้ม/วัน<br>ลิงก์แชร์ของคุณติดรหัส ${esc(me.ref)} อัตโนมัติ</div>
+  ${mem?"":`<h3>สมาชิกค่าย</h3><input id="pin" type="password" placeholder="รหัส PIN จากแอดมิน"><button class="btn o" onclick="pinLink()">ยืนยันเป็นศิลปิน</button>`}
+  ${me.role=="admin"?'<h3>เครื่องมือแอดมิน</h3><div id="adm"></div>':""}
+  <p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="lnk m" onclick="showTerms()">ข้อกำหนดและ PDPA</a></p></details>`;
+ if(!mem){p.innerHTML=head(esc(me.name),esc(me.tier||""))+fanBits+more;bell();if(me.claimable?.length)celebrate(me.claimable[0]);return}
+ const L=V.filter(v=>me.role=="admin"||v.artist==sn);await loadStats(L.map(v=>v.id)).catch(()=>{});
+ const tv=L.reduce((s,v)=>s+st(v.id).pts,0),th=L.reduce((s,v)=>s+st(v.id).spam,0);
+ p.innerHTML=`<div class="apc"><div class="av big">${esc(sn[0])}</div><h2>${esc(sn)}</h2><div class="m">${me.role=="admin"?"แอดมินค่าย":"ศิลปินในค่าย"}</div>
+  <div class="apn"><div><b>${nf(tv)}</b><small>วิวม่วน</small></div><div><b>${nf(th)}</b><small>หัวใจรัว</small></div><div><b>${L.length}</b><small>คลิป</small></div></div></div>
+  <button class="btn big-post" onclick="composer()">+ ลงคลิป</button>
+  <a class="row" onclick="inbox()"><div class="av">${I("bell")}</div><div class="t">แฟนครบ 10,000 หัวใจ<div class="m">${me.inboxNew?me.inboxNew+" คำขอใหม่ · แตะเพื่อส่งคลิปขอบคุณ":"ยังไม่มีคำขอใหม่"}</div></div></a>
+  <h3>คลิปของฉัน</h3>${L.map((v,i)=>rowHtml(v,i,"วิวม่วน "+nf(st(v.id).pts)+" · หัวใจรัว "+nf(st(v.id).spam))).join("")||'<p class="m">ยังไม่มีคลิป กด "+ ลงคลิป" เพื่อเริ่ม</p>'}`+more;
+ if(me.role=="admin")admin();bell()}
+// ---------- one-flow composer: file (compressed on device) or pasted link ----------
+function composer(){let o=$("#cmp");if(!o){o=document.createElement("div");o.id="cmp";document.body.appendChild(o)}const ad=me?.role=="admin";
+ o.innerHTML=`<div class="cmh"><b>ลงคลิป</b><button class="x" onclick="$('#cmp').style.display='none'">${I("x")}</button></div>
+ <label class="pick" for="cf" id="cpv"><span>${I("plus")}</span><b>เลือกคลิปจากเครื่อง</b><small>หรือวางลิงก์ด้านล่าง</small></label><input id="cf" type="file" accept="video/*" hidden>
+ <input id="cl" placeholder="วางลิงก์ YouTube / TikTok / Facebook / IG (ถ้ามี)" inputmode="url">
+ <input id="ct" placeholder="ชื่อคลิป (ไม่บังคับ)">${ad?`<select id="ca">${ROSTER.map(r=>`<option>${r}</option>`).join("")}</select>`:""}
+ <div class="prog" id="cbar" style="display:none"><i></i></div><div class="m" id="cst"></div>
+ <button class="btn big-post" id="cgo">โพสต์</button>`;o.style.display="block";let file=null;
+ const pv=$("#cpv");$("#cf").onchange=e=>{file=e.target.files[0];if(!file)return;$("#cl").value="";pv.innerHTML=`<video src="${URL.createObjectURL(file)}" playsinline muted autoplay loop></video><small class="chg">แตะเพื่อเปลี่ยนคลิป</small>`};
+ $("#cl").oninput=e=>{const u=e.target.value.trim();if(!u)return;file=null;const d=detect(u);pv.innerHTML=d.yid?`<img src="https://i.ytimg.com/vi/${d.yid}/hqdefault.jpg"><small class="chg">${PL[d.platform]}</small>`:`<span>${I("share")}</span><b>${PL[d.platform]||"ลิงก์"}</b><small>${esc(u.slice(0,60))}</small>`};
+ $("#cgo").onclick=()=>{const ctx=window.AudioContext||window.webkitAudioContext?new (window.AudioContext||window.webkitAudioContext)():null; // created inside the tap (iOS)
+  postClip(file,$("#cl").value.trim(),$("#ct").value,ad?$("#ca").value:"",ctx)}}
+function setProg(label,q){$("#cbar").style.display="block";$("#cbar").firstChild.style.width=Math.round(q)+"%";$("#cst").textContent=label+" "+Math.round(q)+"%"}
+async function postClip(file,url,title,artist,ctx){const btn=$("#cgo"),s=$("#cst");
+ if(!file&&!url){s.textContent="เลือกคลิปหรือวางลิงก์ก่อนนะ";return}btn.disabled=true;
+ try{if(!file){if(!/^https?:\/\//.test(url))throw new Error("ลิงก์ไม่ถูกต้อง");await api("/clips",{method:"POST",body:JSON.stringify({url,title,artist,platform:detect(url).platform})})}
+  else{if(!/^video\//.test(f2t(file)))throw new Error("รองรับเฉพาะไฟล์วิดีโอ");const dur=await vidDur(file);if(dur>181)throw new Error("วิดีโอยาวเกิน 3 นาที");
+   setProg("กำลังเตรียมคลิป",0);let up=file;try{const c=await compressVideo(file,dur,q=>setProg("กำลังเตรียมคลิป",q*30),ctx);if(c&&c.size<file.size)up=c}catch(e){console.log("compress skipped",e)}
+   if(up.size>100e6)throw new Error("ไฟล์ใหญ่เกิน 100MB");await driveUpload(up,file.name,title,artist,q=>setProg("กำลังอัปโหลด",30+q*70))}
+  setProg("โพสต์แล้ว",100);$("#cst").textContent="โพสต์แล้ว ✓";await loadVideos();buildFeed(0);setTimeout(()=>{$("#cmp").style.display="none";mePage()},900)}
+ catch(e){s.textContent="ผิดพลาด: "+e.message;$("#cbar").style.display="none"}finally{btn.disabled=false;ctx?.close?.().catch(()=>{})}}
+const f2t=f=>f.type||(/\.(mov|mp4|m4v|webm)$/i.test(f.name)?"video/mp4":"");
+// re-encode on device: canvas (<=720p) + WebAudio -> MediaRecorder (MP4/H.264 on iOS Safari & recent Chrome). Real-time; falls back to the original.
+async function compressVideo(file,dur,onp,ctx){
+ if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return null;
+ const mt=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));if(!mt)return null; // webm would not play on iPhone
+ if(file.size<12e6)return null; // already small
+ const v=document.createElement("video");v.src=URL.createObjectURL(file);v.playsInline=true;v.setAttribute("playsinline","");v.preload="auto";
+ await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("decode"))});
+ const k=Math.min(1,720/Math.min(v.videoWidth,v.videoHeight)),W=Math.round(v.videoWidth*k/2)*2,H=Math.round(v.videoHeight*k/2)*2;
+ const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");const vs=cv.captureStream(30);
+ if(ctx){try{const src=ctx.createMediaElementSource(v),dst=ctx.createMediaStreamDestination();src.connect(dst);dst.stream.getAudioTracks().forEach(t=>vs.addTrack(t));await ctx.resume()}catch(e){v.muted=true}}else v.muted=true;
+ const rec=new MediaRecorder(vs,{mimeType:mt,videoBitsPerSecond:2000000,audioBitsPerSecond:128000}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+ const done=new Promise(ok=>rec.onstop=ok);let live=true;
+ const draw=()=>{if(!live)return;g.drawImage(v,0,0,W,H);onp(Math.min(1,v.currentTime/(dur||v.duration||1)));v.requestVideoFrameCallback?v.requestVideoFrameCallback(draw):requestAnimationFrame(draw)};
+ rec.start(1000);await v.play();draw();
+ await new Promise(ok=>{v.onended=ok;setTimeout(ok,(dur+5)*1000)});live=false;rec.stop();await done;URL.revokeObjectURL(v.src);
+ const b=new Blob(ch,{type:mt.split(";")[0]});return b.size>1000?new File([b],file.name.replace(/\.\w+$/,"")+"_720.mp4",{type:"video/mp4"}):null}
+async function driveUpload(f,name,title,artist,onp){const g=await api("/drive/ticket",{method:"POST",body:JSON.stringify({artist})});
+ const post=b=>fetch(g.bridge,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...b,ticket:g.ticket})}).then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error);return j});
+ const ini=await post({action:"init",name:f.name||name,size:f.size,mime:f2t(f)});
+ const r=await new Promise((ok,no)=>{const x=new XMLHttpRequest();x.open("PUT",ini.uploadUrl);x.setRequestHeader("Content-Type",f2t(f));x.upload.onprogress=e=>e.lengthComputable&&onp(e.loaded/e.total);x.onload=()=>{try{const j=JSON.parse(x.responseText);x.status<300?ok(j):no(new Error(j.error?.message||"อัปโหลดไม่สำเร็จ"))}catch(e){no(e)}};x.onerror=()=>no(new Error("เครือข่ายขัดข้อง"));x.send(f)});
+ const fin=await post({action:"finish",id:r.id});await api("/clips",{method:"POST",body:JSON.stringify({drive:{...fin,uid:g.ticket.uid},title})})}
 const FORM_IDS=["fn","fl","c1","c2","pin","ul","ut","cmi","nn","ni","nc","ns","clm","clc"];
 const FS=(()=>{try{return JSON.parse(sessionStorage.ym_form||"{}")}catch(e){return {}}})();
 function saveForm(el){if(!el||!FORM_IDS.includes(el.id))return;FS[el.id]=el.type=="checkbox"?el.checked:el.value;try{sessionStorage.ym_form=JSON.stringify(FS)}catch(e){}}
@@ -299,7 +353,7 @@ async function admin(){const a=$("#adm"),[pins,mem,rw,rd,cl]=await Promise.all([
  <button class="btn" onclick="adm('/admin/rewards','POST',{name:$('#nn').value,image:$('#ni').value,cost:$('#nc').value,stock:$('#ns').value})">เพิ่มของรางวัล</button>
  <h3>คำขอแลก</h3>${rd.map(r=>`<div class="row"><div class="t">${esc(r.reward)} · ${esc(r.name)} (${esc(r.login)})<div class="m">${esc(r.address)} · ${esc(r.status)}</div>
   <div>${["approved","shipped","rejected"].map(s=>`<span class="chip" onclick="adm('/admin/redemptions','PUT',{id:${+r.id},status:'${s}'})">${({approved:"อนุมัติ",shipped:"จัดส่งแล้ว",rejected:"ปฏิเสธ+คืนแต้ม"})[s]}</span>`).join("")}</div></div></div>`).join("")||'<p class="m">ไม่มี</p>'}
- <h3>อัปโหลดวิดีโอ (ให้เครดิตศิลปิน)</h3>${upBox("a")}<h3>หรือ เพิ่มคลิปจากลิงก์</h3><input id="aul" placeholder="วางลิงก์ YouTube / TikTok / Facebook / IG / mp4"><input id="aut" placeholder="ชื่อคลิป (ไม่บังคับ)"><select id="aua">${ROSTER.map(r=>`<option>${r}</option>`).join("")}</select><button class="btn" onclick="admAddClip()">เพิ่มคลิป</button><p class="m" id="aus"></p><h3>คลิปทั้งหมด</h3>${cl.map(x=>`<div class="row"><div class="t">${esc(x.title)}<div class="m">@${esc(x.artist)}</div></div><button class="btn o" onclick="adm('/admin/clip','DELETE',{id:'${esc(x.id)}'})">ลบ</button></div>`).join("")||'<p class="m">ยังไม่มี</p>'}`}
+ <h3>คลิปทั้งหมด</h3>${cl.map(x=>`<div class="row"><div class="t">${esc(x.title)}<div class="m">@${esc(x.artist)}</div></div><button class="btn o" onclick="adm('/admin/clip','DELETE',{id:'${esc(x.id)}'})">ลบ</button></div>`).join("")||'<p class="m">ยังไม่มี</p>'}`}
 async function adm(p,m,b){if(m=="DELETE"&&!confirm("ยืนยัน?"))return;try{const j=await api(p,{method:m,body:JSON.stringify(b)});if(j.pin)alert("PIN ใหม่: "+j.pin);admin()}catch(e){toast(e.message)}}
 const saveRw=id=>adm("/admin/rewards","PUT",{id,name:$("#rn"+id).value,image:$("#ri"+id).value,cost:$("#rc"+id).value,stock:$("#rs"+id).value,active:$("#ra"+id).checked});
 // ---------- superfan milestone ----------
