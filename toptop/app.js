@@ -132,17 +132,18 @@ function radioPlay(){if(!RAD||!PLS.length)return;const p=radPos();PLI=p.i;const 
  clearTimeout(radioPlay.ck);radioPlay.ck=setTimeout(()=>{if(started&&!musicMuted&&ytState!==1&&!document.hidden)listenTap()},3500)}
 function nextSong(){radioPlay()}
 addEventListener("message",e=>{if(!/youtube/.test(e.origin)||!YTP||e.source!==YTP.contentWindow)return;try{const j=JSON.parse(e.data),i=j.info||{};
- if(i.playerState!=null){ytState=i.playerState;if(i.playerState===0)radioPlay();if(i.playerState===1)$("#tts.lt")?.remove()}
+ if(i.playerState!=null){ytState=i.playerState;if(i.playerState===0)radioPlay();if(i.playerState===1)UNL=true}
  const s=PLS[PLI];if(s&&!s.dur&&i.duration>20&&!durSent[s.id]){durSent[s.id]=1;fetch(API+"/radio/dur",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:s.id,dur:i.duration})}).then(()=>music())}}catch(x){}});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)music()});addEventListener("pageshow",e=>{if(e.persisted)music()});
-function listenTap(){if($("#tts"))return;const t=document.createElement("div");t.id="tts";t.className="lt";t.innerHTML=`<div class="pl">${I("vol")}</div><b>แตะเพื่อฟังเพลง</b><span>${esc(PLS[PLI]?.title||"")}</span>`;
- t.onclick=()=>{t.remove();markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");radioPlay()};document.body.appendChild(t)}
+// silent unlock: no overlay - first interaction of any kind unmutes and starts the synced radio
+let UNL=false;const UEV=["pointerdown","touchstart","touchend","click","keydown","scroll","wheel"];
+function unlockAudio(){if(UNL||!PLS.length)return;UNL=true;UEV.forEach(k=>removeEventListener(k,unlockAudio,true));markStarted();if(!ls.get("tt_mute",false)){musicMuted=false;ytc("unMute");ytc("playVideo")}radioPlay();paintNp()}
+function listenTap(){UNL=false;UEV.forEach(k=>addEventListener(k,unlockAudio,{capture:true,passive:true}))}
 function paintNp(){const n=$("#np");if(!PLS.length){n.className="";return}const s=PLS[PLI];n.className="glass on"+(musicMuted||!started?" mute":"");
  n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button class="dj" aria-label="ขอเพลง" onclick="event.stopPropagation();djOpen()">${I("music")}</button>${me?.role=="admin"?`<button class="adm" aria-label="เพลงถัดไป" onclick="event.stopPropagation();radioCtl('skip')">⏭</button><button class="adm" aria-label="เล่นทันที" onclick="event.stopPropagation();playNowOpen()">▶︎</button>`:""}<button class="mu" aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector(".mu").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
 function setMusicMute(m){musicMuted=m;ls.set("tt_mute",m);markStarted();ytc(m?"mute":"unMute");if(!m)radioPlay();else paintNp()}
 function markStarted(){started=true;sessionStorage.tt_started="1";$("#tts")?.remove()}
-function tapToStart(){if(started||$("#tts")||!PLS.length)return;const t=document.createElement("div");t.id="tts";t.innerHTML=`<img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-splash.png" width="180" style="filter:drop-shadow(0 16px 50px rgba(255,47,179,.5))" alt=""><div class="pl">${I("play","f")}</div><b>แตะเพื่อเริ่ม</b><span>พร้อมเพลงประกอบ</span>`;
- t.onclick=()=>{markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");radioPlay()};document.body.appendChild(t)}
+function tapToStart(){if(!UNL)listenTap()}
 // ---------- photo pipeline: compress on phone (<=1080px JPEG ~200-400KB) -> Drive bridge ----------
 async function loadBitmap(file){try{return await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){}
  try{return await createImageBitmap(file)}catch(e){}
