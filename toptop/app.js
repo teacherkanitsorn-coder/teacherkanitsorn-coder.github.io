@@ -13,7 +13,7 @@ let tok=ls.get("tt_tok",null),me=null,F=[],cur=null,sortBy=ls.get("tt_sort","tim
 const now=()=>Date.now()+NOW_OFF;
 const nf=n=>(n=+n||0)>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":n.toLocaleString("en-US");
 const media=fid=>fid?API+"/media/"+fid:"";
-const avHtml=(u,cls="av")=>u?.avatar?`<div class="${cls}" style="background:center/cover url('${media(u.avatar)}')"></div>`:`<div class="${cls}">${esc((u?.name||"?")[0])}</div>`;
+const avHtml=(u,cls="av")=>u?.avatar?`<div class="${cls}" style="background:center/cover url('${media(u.avatar)}')"></div>`:`<div class="${cls}">${esc(((u?.name||"?").replace(/^[เแโใไ]+/,"")||"?")[0])}</div>`;
 function left(ms){ms=Math.max(0,ms);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(x).padStart(2,"0")}
 function dur(ms){const m=Math.round(ms/6e4);return m>=60?Math.floor(m/60)+" ชม. "+(m%60)+" นาที":m+" นาที"}
 function toast(t){const x=$("#toast")||Object.assign(document.createElement("div"),{id:"toast",className:"glass"});document.body.appendChild(x);x.textContent=t;x.style.display="block";clearTimeout(x._t);x._t=setTimeout(()=>x.style.display="none",2200)}
