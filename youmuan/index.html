@@ -1,45 +1,12 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Youม่วน</title><meta name="theme-color" content="#160f20">
-<style>
-:root{--red:#ff2d55;--pur:#8b3dff;--bg:#000;--tx:#fff;--mut:#bbb}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#000;color:#fff;font-family:"Noto Sans Thai",Sarabun,system-ui,sans-serif;overflow:hidden}
-#top{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));background:linear-gradient(#000a,#0000);pointer-events:none}
-.logo{font-weight:900;font-size:22px;pointer-events:auto}.logo b{color:var(--red)}.logo i{font-style:normal;color:#c79bff}
-#top button{pointer-events:auto;background:#0006;border:0;color:#fff;font-size:20px;border-radius:50%;width:38px;height:38px}
-#feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
-.clip{position:relative;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
-.clip .bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(24px) brightness(.4)}
-.media{position:relative;width:100%;max-width:min(100%,56.25dvh);aspect-ratio:9/16;max-height:100dvh}
-.media.wide{max-width:100%;aspect-ratio:16/9}
-.media iframe,.media video,.media img{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
-.tap{position:absolute;inset:0;z-index:5}
-.side{position:absolute;right:8px;bottom:110px;z-index:8;display:flex;flex-direction:column;gap:14px;align-items:center}
-.side button{background:none;border:0;color:#fff;display:flex;flex-direction:column;align-items:center;font-size:12px;text-shadow:0 1px 3px #000;font-family:inherit}
-.side .ic{font-size:30px;line-height:1}.liked .ic{color:var(--red)}
-.pts{background:linear-gradient(135deg,var(--red),var(--pur));border-radius:12px;padding:4px 6px;font-size:11px;font-weight:700;text-align:center}
-.av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--pur));display:grid;place-items:center;font-weight:900;border:2px solid #fff}
-.meta{position:absolute;left:12px;right:80px;bottom:78px;z-index:8;text-shadow:0 1px 3px #000}
-.meta .ar{font-weight:800}.meta .ti{font-size:14px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.mute{position:absolute;top:70px;left:12px;z-index:8;background:#0008;border-radius:14px;padding:4px 10px;font-size:13px}
-.heart{position:absolute;z-index:9;font-size:72px;pointer-events:none;animation:fl 1s ease-out forwards;color:var(--red)}
-@keyframes fl{0%{transform:translate(-50%,-50%) scale(.3) rotate(var(--r));opacity:1}30%{transform:translate(-50%,-60%) scale(1.2) rotate(var(--r))}100%{transform:translate(-50%,-260%) scale(.9) rotate(var(--r));opacity:0}}
-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;background:#0b0710;border-top:1px solid #2a1f38;padding-bottom:env(safe-area-inset-bottom)}
-nav a{flex:1;text-align:center;padding:8px 0 6px;color:var(--mut);text-decoration:none;font-size:11px}nav a span{display:block;font-size:22px}nav a.on{color:#fff}
-nav a.up span{background:linear-gradient(90deg,var(--red),var(--pur));border-radius:8px;margin:0 auto;width:44px;color:#fff}
-.page{position:fixed;inset:0;bottom:58px;overflow-y:auto;background:#0f0b14;padding:70px 14px 20px;z-index:10;display:none}
-.page h2{margin:0 0 12px}.row{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:#1c1526;margin-bottom:8px;color:#fff;text-decoration:none}
-.row img{width:110px;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.rk{font-size:22px;font-weight:900;width:34px;text-align:center;color:#c79bff}.row .t{font-size:14px;flex:1}
-.m{color:var(--mut);font-size:12px}input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #3a2d4d;background:#120c1a;color:#fff;font-size:16px;margin:4px 0 10px;font-family:inherit}
-.btn{background:linear-gradient(90deg,var(--red),var(--pur));color:#fff;border:0;border-radius:22px;padding:10px 18px;font-size:16px;font-family:inherit}
-.sheet{position:fixed;left:0;right:0;bottom:0;height:65dvh;background:#16101e;border-radius:16px 16px 0 0;z-index:40;transform:translateY(100%);transition:.25s;display:flex;flex-direction:column}
-.sheet.on{transform:none}.sheet header{padding:12px;text-align:center;font-weight:700;border-bottom:1px solid #2a1f38}.sheet .lst{flex:1;overflow:auto;padding:10px 14px}.sheet form{display:flex;gap:6px;padding:8px}.sheet form input{margin:0}
-.note{background:#2a1f38;border-radius:10px;padding:10px;font-size:13px;color:#ddd;margin:10px 0}
-#search{display:none;position:fixed;top:0;left:0;right:0;z-index:25;padding:10px;background:#0f0b14}
-</style></head><body>
-<div id="top"><div class="logo"><b>You</b><i>ม่วน</i></div><button onclick="openSearch()">🔍</button></div>
-<div id="search"><input id="q" placeholder="ค้นหาเพลง ศิลปิน..." oninput="doSearch()"><div id="sr"></div></div>
+<title>Youม่วน</title><meta name="theme-color" content="#000"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.gstatic.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="top"><img src="logo.svg" class="logo" alt="Youม่วน"><button class="ib" id="sbtn" aria-label="ค้นหา"></button></div>
+<div id="search"><div class="srow"><input id="q" placeholder="ค้นหาเพลง ศิลปิน"><button class="ib" id="sx"></button></div><div id="sr"></div></div>
 <div id="feed"></div>
-<div class="page" id="p-trend"></div><div class="page" id="p-board"></div><div class="page" id="p-up"></div><div class="page" id="p-me"></div>
-<div class="sheet" id="cm"><header>ความคิดเห็น <span style="float:right" onclick="cm.classList.remove('on')">✕</span></header><div class="lst" id="cml"></div><form onsubmit="sendCm(event)"><input id="cmi" placeholder="แสดงความคิดเห็น..."><button class="btn">ส่ง</button></form></div>
-<nav><a data-p="home" class="on"><span>🏠</span>หน้าแรก</a><a data-p="trend"><span>🔥</span>มาแรง</a><a data-p="up" class="up"><span>＋</span>อัปโหลด</a><a data-p="board"><span>🏆</span>อันดับ</a><a data-p="me"><span>👤</span>โปรไฟล์</a></nav>
+<div class="page" id="p-trend"></div><div class="page" id="p-rewards"></div><div class="page" id="p-board"></div><div class="page" id="p-me"></div>
+<div class="sheet" id="cm"><header>ความคิดเห็น<button class="ib" id="cmx"></button></header><div class="lst" id="cml"></div><form id="cmf"><input id="cmi" placeholder="แสดงความคิดเห็น"><button class="btn">ส่ง</button></form></div>
+<div id="promo"></div><div id="modal"></div>
+<nav><a data-p="home" class="on"></a><a data-p="trend"></a><a data-p="rewards"></a><a data-p="board"></a><a data-p="me"></a></nav>
 <script src="config.js"></script><script src="app.js"></script></body></html>
