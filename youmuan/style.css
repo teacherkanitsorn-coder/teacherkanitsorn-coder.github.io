@@ -121,3 +121,5 @@ label.ck:has(input:checked){border-color:#fff8}
 #wr{right:auto;left:12px;bottom:calc(96px + 150px);flex-direction:row;gap:6px}#wr svg{width:30px;height:30px}
 
 .media:has(.lcard){contain:none}.lcard{z-index:8;pointer-events:none}.lcard .btn{pointer-events:auto}
+
+.upk{display:flex;gap:8px;align-items:center;justify-content:center;margin:4px 0 10px}.upk svg{width:18px;height:18px;stroke:#000}
