@@ -1,4 +1,6 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
+const APPV="22";
+(function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
 const HOUR=3600e3,MSH=HOUR/10000;
@@ -183,11 +185,8 @@ function pickAvatar(){let i=$("#avin");if(!i){i=document.createElement("input");
   catch(e){const msg=/เปิดรูปไม่ได้|decode|HEIC/i.test(e.message)?"เปิดรูปนี้ไม่ได้ ลองเลือกรูปอื่น (ถ้าเป็นรูป HEIC ให้แคปหน้าจอรูปนั้นแล้วเลือกใหม่)":e.message;show("");modal(`<h3>เปลี่ยนรูปโปรไฟล์ไม่สำเร็จ</h3><p class="m">ขั้นตอน: ${st}</p><p>${esc(msg)}</p><button class="btn w" onclick="$('#modal').style.display='none';pickAvatar()">ลองอีกครั้ง</button>`)}};
  i.click()}
 // ---------- อันดับ: most time left (live) + Hall of fame (longest-lived) ----------
-let rankTab="live";const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${x.thumb||media(x.fid)}" alt=""><div class="t"><div>${esc(x.caption||"รูปของ "+x.name)}</div><div class="m">@${esc(x.name)} · ${lab}</div></div></a>`;
-async function rank(){const p=$("#p-rank");if(rankTab=="area")return areaRank();p.innerHTML=`<h2>อันดับ</h2><div class="chips"><span class="chip ${rankTab=="live"?"on":""}" onclick="rankTab='live';rank()">เวลาเหลือมากสุด</span><span class="chip ${rankTab=="hall"?"on":""}" onclick="rankTab='hall';rank()">Hall of Fame</span><span class="chip ${rankTab=="area"?"on":""}" onclick="rankTab='area';rank()">พื้นที่</span></div><p class="m">กำลังโหลด...</p>`;
- const want=rankTab;const j=await api(rankTab=="live"?"/top":"/hall").catch(()=>({photos:[]}));if(rankTab!=want||rankTab=="area")return;
- p.innerHTML=p.innerHTML.replace('<p class="m">กำลังโหลด...</p>',"")+(rankTab=="live"?'<p class="m">รูปที่ยังมีชีวิต เรียงตามเวลาที่เหลือ</p>':'<p class="m">รูปที่มีชีวิตยาวนานที่สุดตลอดกาล</p>')+
-  (j.photos.map((x,i)=>prow(x,i,rankTab=="live"?"เหลือ "+left(x.expires-now())+" · "+nf(x.hearts)+" หัวใจ":"อยู่มา "+dur(Math.min(x.expires,now())-x.created)+(x.expires>now()?" · ยังมีชีวิต":" · หมดเวลา"))).join("")||'<div class="card glass">ยังไม่มีรูป</div>')}
+const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${x.thumb||media(x.fid)}" alt=""><div class="t"><div>${esc(x.caption||"รูปของ "+x.name)}</div><div class="m">@${esc(x.name)} · ${lab}</div></div></a>`;
+function rank(){return areaRank()}
 async function openPhoto(id,live){$("#ov").style.display="none";if(live){if(!F.find(x=>x.id==id))await loadFeed();go("home");buildFeed(id)}else{const j=await api("/photo/"+id).catch(()=>null);if(!j)return;
  const x=j.photo;modal(`<div style="text-align:center"><img src="${media(x.fid)}" style="max-width:100%;max-height:60dvh;border-radius:20px" alt=""><h3>รูปของ ${esc(x.name)} · หมดเวลาแล้ว</h3><p class="m">อยู่มา ${dur(x.expires-x.created)} · ${nf(x.hearts)} หัวใจ</p></div>`)}}
 function modal(h){const m=$("#modal");m.innerHTML=`<div style="display:flex;justify-content:flex-end"><button class="x" onclick="$('#modal').style.display='none'">${I("x")}</button></div>`+h;m.style.display="block"}
@@ -414,7 +413,7 @@ async function locPicker(box){LOCNUDGED=0;box.innerHTML=`<div class="lh">📍 �
 function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if(L.prov)L.amph=g("#la");if(L.amph)L.tamb=g("#lt");if(L.tamb)L.vill=g("#lv");return L}
 // ---------- area ranking ----------
 // ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
-const LV_N=["ประเทศ","จังหวัด","อำเภอ","ตำบล"];let AR=null;
+const LV_N=["ประเทศไทย","จังหวัด","อำเภอ","ตำบล"];let AR=null;
 function rankBadge(x){const L=(F||[]).filter(p=>p.expires>now());const nat=[...L].sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;
  if(nat&&nat<=10&&x.hearts>0)return `<span class="arb">🏆 #${nat} ของประเทศ</span>`;
  const pr=L.filter(p=>p.prov&&p.prov==x.prov).sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;return pr&&pr<=10&&x.hearts>0?`<span class="arb">🏆 #${pr} ของ ${x.prov==BKK?"":"จ."}${esc(x.prov)}</span>`:""}
@@ -423,12 +422,11 @@ async function areaRank(){const p=$("#p-rank");TH=TH||await fetch("thai.json").t
  if(!AR){const d=ls.get("tt_loc",null)||{};AR={lvl:0,prov:d.prov||"สกลนคร",amph:d.amph||"",tamb:d.tamb||""}}
  const pv=TH.find(x=>x[0]==AR.prov),am=pv&&pv[1].find(x=>x[0]==AR.amph);if(AR.lvl>=2&&!AR.amph&&pv)AR.amph=pv[1][0][0];const am2=pv&&pv[1].find(x=>x[0]==AR.amph);if(AR.lvl>=3&&!AR.tamb&&am2)AR.tamb=am2[1][0];
  const opt=(L,v)=>L.map(n=>`<option${n==v?" selected":""}>${esc(n)}</option>`).join("");
- p.innerHTML=`<h2>อันดับ</h2><div class="chips"><span class="chip" onclick="rankTab='live';rank()">เวลาเหลือมากสุด</span><span class="chip" onclick="rankTab='hall';rank()">Hall of Fame</span><span class="chip on">พื้นที่</span></div>
- <div class="chips sub">${LV_N.map((n,l)=>`<span class="chip${AR.lvl==l?" on":""}" onclick="AR.lvl=${l};areaRank()">${n}</span>`).join("")}</div>
+ p.innerHTML=`<h2>อันดับ</h2><div class="chips sub">${LV_N.map((n,l)=>`<span class="chip${AR.lvl==l?" on":""}" onclick="AR.lvl=${l};areaRank()">${n}</span>`).join("")}</div>
  ${AR.lvl?`<div class="arp">${`<select id="arp1">${opt(TH.map(x=>x[0]),AR.prov)}</select>`}${AR.lvl>=2?`<select id="arp2">${opt(pv?pv[1].map(x=>x[0]):[],AR.amph)}</select>`:""}${AR.lvl>=3?`<select id="arp3">${opt(am2?am2[1]:[],AR.tamb)}</select>`:""}</div>`:""}
  <div class="arh">👑 ที่สุดของ${AR.lvl==0?"ประเทศไทย":" "+esc(areaTitle(AR.lvl,AR))}</div><div id="arl"><p class="m">กำลังโหลด...</p></div>`;
  $("#arp1")&&($("#arp1").onchange=e=>{AR.prov=e.target.value;AR.amph="";AR.tamb="";areaRank()});$("#arp2")&&($("#arp2").onchange=e=>{AR.amph=e.target.value;AR.tamb="";areaRank()});$("#arp3")&&($("#arp3").onchange=e=>{AR.tamb=e.target.value;areaRank()});
- const key=[AR.prov,AR.amph,AR.tamb].slice(0,AR.lvl).join("|"),want=JSON.stringify(AR);const j=await api(`/areatop?lvl=${AR.lvl}&key=${encodeURIComponent(key)}`).catch(()=>({posts:[],members:[],areas:[]}));if(want!=JSON.stringify(AR)||rankTab!="area")return;
+ const key=[AR.prov,AR.amph,AR.tamb].slice(0,AR.lvl).join("|"),want=JSON.stringify(AR);const j=await api(`/areatop?lvl=${AR.lvl}&key=${encodeURIComponent(key)}`).catch(()=>({posts:[],members:[],areas:[]}));if(want!=JSON.stringify(AR)||!$("#arl"))return;
  $("#arl").innerHTML=`<h3>🔥 โพสต์ยอดนิยม</h3>${j.posts.slice(0,10).map((x,i)=>prow(x,i,nf(x.hearts)+" หัวใจ · เหลือ "+left(x.expires-now()))).join("")||'<p class="m">ยังไม่มีโพสต์ที่ยังมีชีวิตในพื้นที่นี้</p>'}
   <h3>⭐ สมาชิกยอดนิยม</h3>${j.members.slice(0,10).map((m,i)=>`<a class="row" onclick="userPage(${m.uid})"><div class="rk${i==0?" c1":""}">${i+1}</div>${avHtml({name:m.name,avatar:m.avatar})}<div class="t"><div>${esc(m.name)}</div><div class="m">หัวใจสะสมในพื้นที่</div></div><div class="ah">❤️ ${nf(m.hearts)}</div></a>`).join("")||'<p class="m">ยังไม่มีสมาชิกได้หัวใจในพื้นที่นี้</p>'}
   ${AR.lvl<3?`<h3>📍 อันดับ${LV_N[AR.lvl+1]}</h3>${j.areas.map((r,i)=>`<a class="row arow" onclick='areaDown(${JSON.stringify(r.key).replace(/'/g,"&#39;")})'><div class="rk${i==0?" c1":""}">${i+1}</div><div class="t"><div>${esc(r.name)}</div><div class="m">${nf(r.posts)} โพสต์</div></div><div class="ah">❤️ ${nf(r.hearts)}</div></a>`).join("")||`<p class="m">ยังไม่มีข้อมูล${LV_N[AR.lvl+1]}</p>`}`:""}`}
