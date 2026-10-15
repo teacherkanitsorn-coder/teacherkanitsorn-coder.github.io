@@ -52,23 +52,24 @@ setInterval(tick,1000);
 setInterval(()=>{if(tab!="home")return;const dead=F.filter(x=>x.expires<=now());if(dead.length&&(!cur||cur.x.expires<=now()-4000)){loadFeed().then(()=>buildFeed(cur?.x?.expires>now()?cur.x.id:null))}},5000);
 // ---------- hearts: optimistic, batched, server clamps + rate limits ----------
 const HQ={};function hq(id,n,k){const q=HQ[id]||(HQ[id]={n:0,k:0});q.n+=n;q.k+=k}
-async function flushHearts(){for(const [pid,q] of Object.entries(HQ)){delete HQ[pid];if(!q.n&&!q.k)continue;try{const r=await api("/hearts",{method:"POST",body:JSON.stringify({pid,n:q.n,k:q.k})});const x=F.find(y=>y.id==pid);
-  if(x&&r.expires){x.hearts=r.hearts;x.expires=r.expires}if(r.limited)toast("กดเร็วเกินไป พักหายใจแป๊บ ❤️");if(r.expired)toast("รูปนี้หมดเวลาแล้ว")}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}
-setInterval(flushHearts,1200);addEventListener("pagehide",flushHearts);
+let hfly=false,hLimT=0;async function flushHearts(){if(hfly)return;hfly=true;try{for(const [pid,q] of Object.entries(HQ)){delete HQ[pid];if(!q.n&&!q.k)continue;try{const r=await api("/hearts",{method:"POST",body:JSON.stringify({pid,n:q.n,k:q.k})});const x=F.find(y=>y.id==pid);
+  if(x&&r.expires){x.hearts=r.hearts;x.expires=r.expires}if(r.limited&&Date.now()-hLimT>15000){hLimT=Date.now();toast("กดเร็วมาก! บางหัวใจไม่นับ พักแป๊บนะ ❤️")}if(r.expired)toast("รูปนี้หมดเวลาแล้ว")}catch(e){if(/เข้าสู่ระบบ/.test(e.message))go("me")}}}finally{hfly=false}}
+setInterval(flushHearts,1000);addEventListener("pagehide",flushHearts);
 const CB={pid:null,streak:0,until:0,combo:0,timer:null};
-let pinT=null;function pinFeed(){const f=$("#feed");if(!cur)return;const top=cur.d.offsetTop;f.style.overflowY="hidden";if(Math.abs(f.scrollTop-top)>1)f.scrollTop=top;clearTimeout(pinT);pinT=setTimeout(()=>{f.style.overflowY="";if(cur&&Math.abs(f.scrollTop-cur.d.offsetTop)>1)f.scrollTop=cur.d.offsetTop},600)}
+let pinT=null;let pinned=false;function pinFeed(){const f=$("#feed");if(!cur)return;if(!pinned){pinned=true;f.style.overflowY="hidden"}clearTimeout(pinT);pinT=setTimeout(()=>{pinned=false;f.style.overflowY="";if(cur&&Math.abs(f.scrollTop-cur.d.offsetTop)>1)f.scrollTop=cur.d.offsetTop},600)}
 function heart(d,x,e){if(!tok){toast("สมัครฟรีก่อน แล้วกดหัวใจได้ไม่จำกัด");return go("me")}if(x.expires<=now())return toast("รูปนี้หมดเวลาแล้ว");pinFeed();
  if(CB.pid!=x.id){endBoost();CB.pid=x.id;CB.streak=0}const boost=Date.now()<CB.until,add=boost?100:1;
- tapFX(e.clientX,e.clientY,add,boost);const sp=d.querySelector(".sp");sp.classList.remove("pop");void sp.offsetWidth;sp.classList.add("pop");hint(boost);
- x.hearts+=add;x.expires+=add*MSH;if(boost){hq(x.id,0,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{hq(x.id,1,0);if(++CB.streak>=100)startBoost()}tick()}
-let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";h.className="glass";document.body.appendChild(h)}
- if(boost){h.style.display="none";return}h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b>${Math.min(CB.streak+1,100)}/100</b><i style="width:${Math.min(CB.streak+1,100)}%"></i>`;h.style.display="block";clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
-const FX={c:null,x:null,p:[],t:[],r:[],run:false,last:0,combo:0,lastTap:0,MAX:450};
+ tapFX(e.clientX,e.clientY,add,boost);const sp=d.querySelector(".sp .bub");sp.animate&&sp.animate([{transform:"scale(1)"},{transform:"scale(1.15)"},{transform:"scale(1)"}],{duration:160});hint(boost);
+ x.hearts+=add;x.expires+=add*MSH;if(boost){hq(x.id,0,1);CB.combo++;$("#cbn").textContent="x"+CB.combo+"  +"+nf(CB.combo*100)}else{hq(x.id,1,0);if(++CB.streak>=100)startBoost()}paintOne(d,x)}
+let p1=0;function paintOne(d,x){if(p1)return;p1=requestAnimationFrame(()=>{p1=0;const nh=d.querySelector(".nh");if(nh)nh.textContent=nf(x.hearts);const tl=d.querySelector(".tl");if(tl)tl.textContent=left(x.expires-now())})}
+let hintT=null;function hint(boost){let h=$("#cbh");if(!h){h=document.createElement("div");h.id="cbh";document.body.appendChild(h)}
+ if(boost){h.style.display="none";return}if(!h._b){h.innerHTML=`กดครบ 100 ครั้ง เข้าโหมดใจเดือด 🔥 <b></b><i></i>`;h._b=h.querySelector("b");h._i=h.querySelector("i")}const s=Math.min(CB.streak+1,100);h._b.textContent=s+"/100";h._i.style.transform=`scaleX(${s/100})`;if(h.style.display!="block")h.style.display="block";clearTimeout(hintT);hintT=setTimeout(()=>h.style.display="none",1500)}
+const FX={c:null,x:null,p:[],t:[],r:[],run:false,last:0,combo:0,lastTap:0,MAX:70};
 function fxInit(){if(FX.c)return;const c=FX.c=document.createElement("canvas");c.id="fx";document.body.appendChild(c);FX.x=c.getContext("2d");
- const rs=()=>{const dpr=Math.min(devicePixelRatio||1,2);c.width=innerWidth*dpr;c.height=innerHeight*dpr;FX.x.setTransform(dpr,0,0,dpr,0,0)};rs();addEventListener("resize",rs)}
+ const rs=()=>{const dpr=Math.min(devicePixelRatio||1,1.5);c.width=innerWidth*dpr;c.height=innerHeight*dpr;FX.x.setTransform(dpr,0,0,dpr,0,0)};rs();addEventListener("resize",rs)}
 function spawn(x,y,n,spd,big){for(let i=0;i<n&&FX.p.length<FX.MAX;i++){const a=Math.random()*Math.PI*2,s=spd*(.35+Math.random()*.9);
  FX.p.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-spd*.35,life:0,max:.55+Math.random()*.55,size:(big?9:5)+Math.random()*(big?12:7),heart:Math.random()<.55,rot:Math.random()*6,vr:(Math.random()-.5)*10})}}
-function popText(x,y,s,size,dur=.8,center=false){FX.t.push({x,y,s,size,life:0,max:dur,center});if(FX.t.length>24)FX.t.shift()}
+function popText(x,y,s,size,dur=.8,center=false){FX.t.push({x,y,s,size,life:0,max:dur,center});if(FX.t.length>6)FX.t.shift()}
 function heartPath(g,s){g.beginPath();g.moveTo(0,s*.35);g.bezierCurveTo(-s*1.1,-s*.35,-s*.45,-s*1.05,0,-s*.45);g.bezierCurveTo(s*.45,-s*1.05,s*1.1,-s*.35,0,s*.35);g.fill()}
 function fxLoop(ts){const g=FX.x,dt=Math.min(.05,(ts-(FX.last||ts))/1000);FX.last=ts;g.clearRect(0,0,innerWidth,innerHeight);
  for(let i=FX.p.length-1;i>=0;i--){const p=FX.p[i];p.life+=dt;if(p.life>=p.max){FX.p.splice(i,1);continue}p.vy+=1100*dt;p.vx*=.985;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
@@ -79,18 +80,18 @@ function fxLoop(ts){const g=FX.x,dt=Math.min(.05,(ts-(FX.last||ts))/1000);FX.las
   g.globalAlpha=(1-k)*.9;g.strokeStyle="#fff";g.lineWidth=r.w*(1-k)+1;g.beginPath();g.arc(r.x,r.y,r.R*(1-Math.pow(1-k,3)),0,Math.PI*2);g.stroke()}
  g.textAlign="center";g.textBaseline="middle";
  for(let i=FX.t.length-1;i>=0;i--){const t=FX.t[i];t.life+=dt;if(t.life>=t.max){FX.t.splice(i,1);continue}const k=t.life/t.max,sc=k<.15?.6+k/.15*.6:1.2-(k-.15)*.3;
-  g.globalAlpha=1-Math.max(0,(k-.55)/.45);g.font=`700 ${Math.round(t.size*sc)}px Inter,Kanit`;g.fillStyle="#fff";g.shadowColor="rgba(255,255,255,.6)";g.shadowBlur=t.center?18:6;
-  g.fillText(t.s,t.x,t.center?t.y:t.y-k*90);g.shadowBlur=0}
+  g.globalAlpha=1-Math.max(0,(k-.55)/.45);g.font=`700 ${Math.round(t.size*sc)}px Inter,Kanit`;g.fillStyle="#fff";
+  g.fillText(t.s,t.x,t.center?t.y:t.y-k*90);}
  g.globalAlpha=1;if(FX.p.length||FX.t.length||FX.r.length)requestAnimationFrame(fxLoop);else{FX.run=false;FX.last=0}}
 function fxKick(){if(!FX.run){FX.run=true;requestAnimationFrame(fxLoop)}}
 const TIERS_FX=[[100,"x100 ตำนาน!"],[50,"x50!"],[25,"x25 COMBO!"],[10,"x10 COMBO!"]];
 function tapFX(x,y,add,boost){fxInit();const t=performance.now();FX.combo=t-FX.lastTap<700?FX.combo+1:1;FX.lastTap=t;const c=FX.combo;
- spawn(x,y,boost?34:c>=50?22:c>=25?16:c>=10?12:8,boost?900:c>=25?650:480,boost||c>=50);popText(x,y-30,"+"+add,boost?44:c>=25?30:c>=10?26:22);
+ spawn(x,y,boost?8:c>=25?5:4,boost?900:c>=25?650:480,boost||c>=50);popText(x,y-30,"+"+add,boost?44:c>=25?30:c>=10?26:22);
  if(boost)FX.r.push({x,y,R:110,w:6,life:0,max:.45});const tier=TIERS_FX.find(q=>c==q[0]);if(tier){popText(innerWidth/2,innerHeight*.32,tier[1],tier[0]>=50?52:40,1.1,true);FX.r.push({x:innerWidth/2,y:innerHeight*.32,R:180,w:4,life:0,max:.6})}
- if((c>=10&&c%5==0)||boost)shake(boost?7:3);navigator.vibrate&&navigator.vibrate(boost?20:10);fxKick()}
-function shake(px){const m=cur?.d.querySelector(".ph");if(!m)return;m.style.setProperty("--sh",px+"px");m.classList.remove("shake");void m.offsetWidth;m.classList.add("shake")}
-function startBoost(){fxInit();for(let i=0;i<8;i++)spawn(Math.random()*innerWidth,Math.random()*innerHeight*.8,18,900,true);FX.r.push({x:innerWidth/2,y:innerHeight/2,R:Math.max(innerWidth,innerHeight)*.75,w:10,life:0,max:.8});
- popText(innerWidth/2,innerHeight*.45,"ใจเดือด!",56,1.2,true);shake(10);navigator.vibrate&&navigator.vibrate([30,40,30]);fxKick();document.body.classList.add("glow");
+ if(c%20==0)shake(2);if(c%10==1&&navigator.vibrate)navigator.vibrate(6);fxKick()}
+function shake(px){const m=cur?.d.querySelector(".ph img");if(!m||!m.animate)return;m.animate([{transform:"translate(0,0)"},{transform:`translate(${px}px,0)`},{transform:`translate(-${px}px,0)`},{transform:"translate(0,0)"}],{duration:180})}
+function startBoost(){fxInit();for(let i=0;i<4;i++)spawn(Math.random()*innerWidth,Math.random()*innerHeight*.8,8,800,true);FX.r.push({x:innerWidth/2,y:innerHeight/2,R:Math.max(innerWidth,innerHeight)*.75,w:10,life:0,max:.8});
+ popText(innerWidth/2,innerHeight*.45,"ใจเดือด!",56,1.2,true);shake(4);navigator.vibrate&&navigator.vibrate(20);fxKick();document.body.classList.add("glow");
  $("#cbh")&&($("#cbh").style.display="none");CB.until=Date.now()+10000;CB.combo=0;let o=$("#cbo");if(!o){o=document.createElement("div");o.id="cbo";document.body.appendChild(o)}
  o.innerHTML=`<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="trk"/><circle cx="50" cy="50" r="44" class="rng" id="cbr"/></svg><b id="cbs">10</b><div class="cbt">ใจเดือด!</div><div id="cbn">x0</div>`;o.style.display="flex";
  requestAnimationFrame(()=>{$("#cbr").style.transition="stroke-dashoffset 10s linear";$("#cbr").style.strokeDashoffset="276.5"});
@@ -124,9 +125,11 @@ function markStarted(){started=true;sessionStorage.tt_started="1";$("#tts")?.rem
 function tapToStart(){if(started||$("#tts")||!PLS.length)return;const t=document.createElement("div");t.id="tts";t.innerHTML=`<img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-splash.png" width="180" style="filter:drop-shadow(0 16px 50px rgba(255,47,179,.5))" alt=""><div class="pl">${I("play","f")}</div><b>แตะเพื่อเริ่ม</b><span>พร้อมเพลงประกอบ</span>`;
  t.onclick=()=>{markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");ytc("playVideo");paintNp()};document.body.appendChild(t)}
 // ---------- photo pipeline: compress on phone (<=1080px JPEG ~200-400KB) -> Drive bridge ----------
-async function loadBitmap(file){try{return await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){return await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=()=>no(new Error("เปิดรูปไม่ได้"));im.src=URL.createObjectURL(file)})}}
+async function loadBitmap(file){try{return await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){}
+ try{return await createImageBitmap(file)}catch(e){}
+ const u=URL.createObjectURL(file);try{const im=new Image();im.src=u;await (im.decode?im.decode():new Promise((ok,no)=>{im.onload=ok;im.onerror=no}));if(!im.naturalWidth)throw 0;return im}catch(e){throw new Error("เปิดรูปไม่ได้ ("+(file.type||"ไม่ทราบชนิด")+")")}}
 const toBlob=(c,q)=>new Promise(ok=>c.toBlob(ok,"image/jpeg",q));
-async function compressImage(file,max=1080,target=380e3,square=false){const bm=await loadBitmap(file);let sw=bm.width,sh=bm.height,sx=0,sy=0;
+async function compressImage(file,max=1080,target=380e3,square=false){const bm=await loadBitmap(file);let sw=bm.naturalWidth||bm.width,sh=bm.naturalHeight||bm.height,sx=0,sy=0;
  if(square){const s=Math.min(sw,sh);sx=(sw-s)/2;sy=(sh-s)/2;sw=sh=s}const k=Math.min(1,max/Math.max(sw,sh)),W=Math.round(sw*k),H=Math.round(sh*k);
  const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");g.imageSmoothingQuality="high";g.drawImage(bm,sx,sy,sw,sh,0,0,W,H);
  let q=.82,b=await toBlob(c,q);while(b.size>target&&q>.45){q-=.08;b=await toBlob(c,q)}
@@ -149,8 +152,12 @@ function composer(){if(!tok){toast("สมัครฟรีก่อน แล�
   try{prog("กำลังเตรียมรูป",5);const c=await compressImage(pk);prog("กำลังอัปโหลด",20);const d=await driveSend(c.blob,q=>prog("กำลังอัปโหลด",20+q*75));
    const r=await api("/photos",{method:"POST",body:JSON.stringify({drive:d,caption:$("#ccap").value,thumb:c.thumb,w:c.w,h:c.h})});prog("โพสต์แล้ว",100);st.textContent=`โพสต์แล้ว ✓ (${Math.round(c.blob.size/1024)} KB) มีชีวิต 1 ชั่วโมง`;
    setTimeout(async()=>{closeSheet();await loadFeed();go("home");buildFeed(r.id)},700)}catch(e){st.textContent="ผิดพลาด: "+e.message;bar.style.display="none"}finally{btn.disabled=false}}}
-function pickAvatar(){const i=document.createElement("input");i.type="file";i.accept="image/*";i.onchange=async()=>{const f=i.files[0];if(!f)return;toast("กำลังอัปโหลดรูปโปรไฟล์...");
- try{const c=await compressImage(f,512,120e3,true);const d=await driveSend(c.blob,()=>{});const r=await api("/avatar",{method:"POST",body:JSON.stringify({drive:d})});me.avatar=r.avatar;toast("เปลี่ยนรูปโปรไฟล์แล้ว");mePage()}catch(e){toast("ผิดพลาด: "+e.message)}};i.click()}
+function pickAvatar(){let i=$("#avin");if(!i){i=document.createElement("input");i.id="avin";i.type="file";i.accept="image/*";i.style.cssText="position:fixed;left:-9999px;opacity:0";document.body.appendChild(i)}
+ i.value="";i.onchange=async()=>{const f=i.files&&i.files[0];if(!f)return;let st="เตรียมรูป";const show=t=>{const m=$("#avst");if(m)m.textContent=t;else toast(t)};
+  try{show("กำลังย่อรูป...");const c=await compressImage(f,512,150e3,true);st="อัปโหลด";show("กำลังอัปโหลด...");const d=await driveSend(c.blob,q=>show("กำลังอัปโหลด "+Math.round(q*100)+"%"));
+   st="บันทึก";const r=await api("/avatar",{method:"POST",body:JSON.stringify({drive:d})});me.avatar=r.avatar;show("");toast("เปลี่ยนรูปโปรไฟล์แล้ว ✓");mePage()}
+  catch(e){const msg=/เปิดรูปไม่ได้|decode|HEIC/i.test(e.message)?"เปิดรูปนี้ไม่ได้ (HEIC) ลองเลือกรูปอื่น หรือแคปหน้าจอรูปนั้นแล้วเลือกใหม่":e.message;show("");modal(`<h3>เปลี่ยนรูปโปรไฟล์ไม่สำเร็จ</h3><p class="m">ขั้นตอน: ${st}</p><p>${esc(msg)}</p><button class="btn w" onclick="$('#modal').style.display='none';pickAvatar()">ลองอีกครั้ง</button>`)}};
+ i.click()}
 // ---------- อันดับ: most time left (live) + Hall of fame (longest-lived) ----------
 let rankTab="live";const prow=(x,i,lab)=>`<a class="row" onclick="openPhoto('${x.id}',${x.expires>now()})"><div class="rk${i==0?" c1":""}">${i+1}</div><img src="${x.thumb||media(x.fid)}" alt=""><div class="t"><div>${esc(x.caption||"รูปของ "+x.name)}</div><div class="m">@${esc(x.name)} · ${lab}</div></div></a>`;
 async function rank(){const p=$("#p-rank");p.innerHTML=`<h2>อันดับ</h2><div class="chips"><span class="chip ${rankTab=="live"?"on":""}" onclick="rankTab='live';rank()">เวลาเหลือมากสุด</span><span class="chip ${rankTab=="hall"?"on":""}" onclick="rankTab='hall';rank()">Hall of Fame</span></div><p class="m">กำลังโหลด...</p>`;
@@ -176,7 +183,7 @@ async function mePage(){const p=$("#p-me");
   $("#tS").onclick=()=>{$("#tS").classList.add("on");$("#tL").classList.remove("on");su()};$("#tL").onclick=()=>{$("#tL").classList.add("on");$("#tS").classList.remove("on");li()};su();return}
  const j=await api("/me").catch(e=>{if(/เข้าสู่ระบบ/.test(e.message)){tok=null;localStorage.removeItem("tt_tok")}return null});if(!j)return mePage();me={...j.user,unread:j.unread};badge();
  p.innerHTML=`<div style="text-align:center"><a onclick="pickAvatar()" style="position:relative;display:inline-block">${avHtml(me,"av big")}<span class="glass" style="position:absolute;right:-4px;bottom:6px;border-radius:50%;width:32px;height:32px;display:grid;place-items:center">${I("cam")}</span></a>
-  <h2>${esc(me.name)}</h2><p class="m">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
+  <h2>${esc(me.name)}</h2><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
   <details class="more"><summary>${I("menu")}เมนูเพิ่มเติม</summary>${me.role=="admin"?'<div id="adm"></div>':`<h3>แอดมิน</h3><input id="pin" type="password" placeholder="รหัส PIN แอดมิน"><button class="btn o" onclick="pinLink()">ยืนยัน</button>`}
   <p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="m" onclick="showTerms()" style="text-decoration:underline">ข้อกำหนดและ PDPA</a></p></details>`;if(me.role=="admin")admin()}
 async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
