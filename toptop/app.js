@@ -138,7 +138,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)music()});
 function listenTap(){if($("#tts"))return;const t=document.createElement("div");t.id="tts";t.className="lt";t.innerHTML=`<div class="pl">${I("vol")}</div><b>แตะเพื่อฟังเพลง</b><span>${esc(PLS[PLI]?.title||"")}</span>`;
  t.onclick=()=>{t.remove();markStarted();musicMuted=false;ls.set("tt_mute",false);ytc("unMute");radioPlay()};document.body.appendChild(t)}
 function paintNp(){const n=$("#np");if(!PLS.length){n.className="";return}const s=PLS[PLI];n.className="glass on"+(musicMuted||!started?" mute":"");
- n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button class="dj" aria-label="ขอเพลง" onclick="event.stopPropagation();djOpen()">${I("music")}</button><button class="mu" aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector(".mu").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
+ n.innerHTML=`<div class="eq"><b></b><b></b><b></b></div><span class="t">${esc(s.title)}</span><button class="dj" aria-label="ขอเพลง" onclick="event.stopPropagation();djOpen()">${I("music")}</button>${me?.role=="admin"?`<button class="adm" aria-label="เพลงถัดไป" onclick="event.stopPropagation();radioCtl('skip')">⏭</button><button class="adm" aria-label="เล่นทันที" onclick="event.stopPropagation();playNowOpen()">▶︎</button>`:""}<button class="mu" aria-label="เสียง">${I(musicMuted||!started?"mute":"vol")}</button>`;n.querySelector(".mu").onclick=e=>{e.stopPropagation();setMusicMute(started?!musicMuted:false)}}
 function setMusicMute(m){musicMuted=m;ls.set("tt_mute",m);markStarted();ytc(m?"mute":"unMute");if(!m)radioPlay();else paintNp()}
 function markStarted(){started=true;sessionStorage.tt_started="1";$("#tts")?.remove()}
 function tapToStart(){if(started||$("#tts")||!PLS.length)return;const t=document.createElement("div");t.id="tts";t.innerHTML=`<img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-splash.png" width="180" style="filter:drop-shadow(0 16px 50px rgba(255,47,179,.5))" alt=""><div class="pl">${I("play","f")}</div><b>แตะเพื่อเริ่ม</b><span>พร้อมเพลงประกอบ</span>`;
@@ -306,3 +306,10 @@ let djBack=0,djN=0;function djNudge(){const busy=$("#sheet.on")||$("#tts")||docu
 function djCycle(){let k=0;const b=()=>{if(k++<3){djNudge();setTimeout(b,4000)}else $("#djn")?.classList.remove("on")};b()}
 setTimeout(()=>{djCycle();setInterval(djCycle,60000)},20000);
 setInterval(()=>{if($("#sheet.on")||$("#tts"))$("#djn")?.classList.remove("on")},500);
+
+// ---------- admin radio control + light sync poll ----------
+async function radioCtl(action,cid){try{await api("/admin/radio",{method:"POST",body:JSON.stringify({action,cid})});toast(action=="skip"?"ข้ามเพลงแล้ว ทุกเครื่องจะเปลี่ยนตามในไม่กี่วินาที":"เล่นทันที ✓");closeSheet();await music()}catch(e){toast(e.message)}}
+async function playNowOpen(){const s=$("#sheet");s.className="glass on full";s.innerHTML=`<div class="hd"><b>${I("music")} เล่นทันที (แอดมิน)</b><button onclick="closeSheet()">${I("x")}</button></div><div class="bd"><input id="pnq" placeholder="ค้นหาเพลงในคลัง"><div id="pnl"></div></div>`;
+ DJC=DJC||await api("/catalog").catch(()=>[]);const f=()=>{const q=$("#pnq").value.trim().toLowerCase();$("#pnl").innerHTML=DJC.filter(c=>!q||c.title.toLowerCase().includes(q)).slice(0,80).map(c=>`<a class="row" onclick="radioCtl('play',${c.id})"><img src="https://i.ytimg.com/vi/${c.yid}/default.jpg" alt=""><div class="t"><div>${esc(c.title)}</div></div>▶︎</a>`).join("")};$("#pnq").oninput=f;f()}
+setInterval(async()=>{if(document.hidden||!RAD)return;const j=await api("/radio").catch(()=>null);if(!j)return;const sig=j.start+":"+j.tracks.map(t=>t.id+"/"+t.dur).join(",");if(radioSig&&sig!=radioSig){RAD={start:j.start,off:j.now-Date.now()};PLS=j.tracks;radioPlay()}radioSig=sig},6000);
+let radioSig="";

@@ -137,3 +137,4 @@ body.offfeed #top{background:linear-gradient(180deg,rgba(8,4,31,.94),rgba(8,4,31
 
 #nav a.busy .i{stroke:#ff3b5c;opacity:1;filter:drop-shadow(0 0 6px rgba(255,59,92,.8))}#nav a.busy{color:#ff3b5c}
 .msg.pend{opacity:.6}
+#np .adm{background:rgba(255,200,61,.22)!important;font-size:13px;color:#ffc83d}
