@@ -237,7 +237,6 @@ body.hasonl .post .timer{right:calc(50% - 30px)}#onl{left:calc(50% + 38px);top:c
 #lc{bottom:calc(204px + env(safe-area-inset-bottom))}
 /* purple logo glow */
 .logo{filter:drop-shadow(0 3px 12px rgba(168,85,247,.55)) drop-shadow(0 0 22px rgba(192,64,255,.25))}
-#nav .plus,#nav a.plus .i{box-shadow:0 0 22px rgba(168,85,247,.55)}
 /* balanced pill pair (countdown + online): same height, radius, glass and type */
 .post .timer,#onl{height:40px;box-sizing:border-box;padding:0 14px;border-radius:20px;gap:6px;display:flex;align-items:center;white-space:nowrap;background:rgba(14,8,40,.42)!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);box-shadow:0 6px 20px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.14)!important;font:500 13px Prompt;color:#fff}
 .post .timer small,#onl{font:500 12.5px Prompt}.post .timer small{color:rgba(255,255,255,.78)}.post .timer .tl,#onl b{font:700 15.5px Inter,Prompt;font-variant-numeric:tabular-nums}
@@ -254,3 +253,4 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 @keyframes shine{0%,55%{background-position:150% 0}85%,100%{background-position:-60% 0}}
 @media (prefers-reduced-motion:reduce){.lgw .logo,.lgw .crn,.lgw .shn{animation:none}}
 .locf .req{color:#ff5c8a}#cgo:disabled{opacity:.45;filter:grayscale(.4)}
+#lc .lct{border-radius:50%!important}
