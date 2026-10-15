@@ -207,7 +207,7 @@ async function mePage(){const p=$("#p-me");
   <h2>${esc(me.name)}</h2><div class="fc" id="myfc"></div><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
   <details class="more"><summary>${I("menu")}เมนูเพิ่มเติม</summary>${me.role=="admin"?'<div id="adm"></div>':`<h3>แอดมิน</h3><input id="pin" type="password" placeholder="รหัส PIN แอดมิน"><button class="btn o" onclick="pinLink()">ยืนยัน</button>`}
   <p><button class="btn o" onclick="logout()">ออกจากระบบ</button> <a class="m" onclick="showTerms()" style="text-decoration:underline">ข้อกำหนดและ PDPA</a></p></details>`;if(me.role=="admin")admin()}
-async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
+async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;if(path=="/signup"&&me?.id)ls.set("tt_new_"+me.id,1);await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
 async function pinLink(){try{await api("/pin-link",{method:"POST",body:JSON.stringify({pin:$("#pin").value})});toast("เป็นแอดมินแล้ว");mePage()}catch(e){toast(e.message)}}
 async function logout(){await api("/logout",{method:"POST"}).catch(()=>{});tok=null;me=null;localStorage.removeItem("tt_tok");badge();mePage()}
 async function blockUser(id,on){if(on&&!confirm("บล็อกสมาชิกนี้? จะไม่เห็นข้อความจากกันอีก"))return;await api("/block",{method:"POST",body:JSON.stringify({id,on})}).catch(e=>toast(e.message));toast(on?"บล็อกแล้ว":"ยกเลิกบล็อกแล้ว");$("#ov").style.display="none";closeSheet()}
@@ -357,7 +357,7 @@ function lcBuild(){if($("#lc"))return;const d=document.createElement("div");d.id
  const inp=$("#lci"),sb=$("#lcs");LV.sync=()=>sb.disabled=LV.busy||!inp.value.trim();inp.oninput=()=>{LV.sync();lcWake()};inp.onfocus=lcWake;d.addEventListener("pointerdown",lcWake,true);lcWake();
  lcVis()}
 function lcWake(){const m=$("#lcm");if(!m)return;m.classList.remove("dim");clearTimeout(LV.dt);LV.dt=setTimeout(()=>{if(document.activeElement?.id=="lci"&&$("#lci").value)return lcWake();m.classList.add("dim")},10000)}
-function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?"💬":I("x")}
+function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"/></svg>':I("x")}
 function lcAdd(ms){const box=$("#lcm");if(!box||LV.hide)return;for(const x of ms){if(box.querySelector(`[data-i="${x.id}"]`))continue;const e=document.createElement("div");e.className="lcx";e.dataset.i=x.id;
   e.innerHTML=`${avHtml({name:x.name,avatar:x.avatar},"av")}<p><b>${esc(x.name)}</b> ${esc(x.text)}</p>`;if(me?.role=="admin")e.onclick=()=>lcMod(x);box.appendChild(e);LV.fresh=1}
  if(LV.fresh){LV.fresh=0;lcWake()}const all=[...box.children];all.slice(0,Math.max(0,all.length-8)).forEach(e=>e.remove());[...box.children].forEach((e,i,a)=>e.style.opacity=Math.min(1,.35+(i+1)/a.length))}
@@ -366,6 +366,7 @@ async function lcMod(x){const c=prompt(`ข้อความของ ${x.name}
  toast("เรียบร้อย");$("#lcm").innerHTML="";LV.since=0;livePoll()}catch(e){toast(e.message)}}
 async function livePoll(){clearTimeout(LV.t);if(document.hidden)return;lcBuild();lcVis();
  try{const showing=tab=="home"&&!LV.hide,q=showing?LV.since:-1;const j=await api("/live?since="+(q<0?LV.since||1e15:q));
+  onlinePaint(j.online);
   if(showing&&j.msgs.length){lcAdd(j.msgs);LV.since=j.msgs[j.msgs.length-1].id;LV.idle=0}else LV.idle++;
 }catch(e){LV.idle++}
  const ms=document.hidden?0:(tab=="home"&&!LV.hide?(LV.idle<15?2500:5000):8000);if(ms)LV.t=setTimeout(livePoll,ms)}
@@ -375,3 +376,16 @@ const _admin=admin;admin=async function(){await _admin();const a=$("#adm");if(!a
  c.innerHTML=[["สมาชิกทั้งหมด",d.members],["ออนไลน์ตอนนี้",d.online],["สมัครใหม่วันนี้",d.newToday],["รูปที่ยังมีชีวิต",d.live],["หัวใจวันนี้",d.heartsToday]].map(([l,v])=>`<div><b>${nf(v)}</b><span>${l}</span></div>`).join("");a.prepend(c)}catch(e){}};
 const _go=go;go=function(...a){const r=_go.apply(this,a);setTimeout(()=>{lcVis();if(tab=="home"&&!LV.hide){LV.idle=0;livePoll()}},0);return r};
 setTimeout(livePoll,1500);
+
+// ---------- online-now pill (top centre, next to the lifetime countdown) ----------
+function onlinePaint(n){let p=$("#onl");if(n==null)return;if(!p){p=document.createElement("div");p.id="onl";document.body.appendChild(p)}
+ p.innerHTML=`<i></i>ออนไลน์ <b>${nf(Math.max(1,n))}</b> คน`;p.style.display=tab=="home"?"":"none";document.body.classList.toggle("hasonl",tab=="home")}
+// ---------- onboarding for brand-new signups (once per account) ----------
+const OB=[["👆","ปัดดูรูป","ปัดขึ้น-ลงเพื่อดูรูปของทุกคน รูปไหนชอบ แวะกดหัวใจให้เลย"],["❤️","ใจรัว = ต่อชีวิตรูป","ทุกรูปมีเวลาจำกัด รัวหัวใจให้รูปที่ชอบ ทุก 10,000 หัวใจ = +1 ชม."],["➕","โพสต์รูปของคุณ","กดปุ่ม + ตรงกลาง เลือกรูป จัดกรอบ แล้วโพสต์ เริ่มต้นมีชีวิต 1 ชม."],["🎵","เป็นดีเจแค่ 5 บาท","อยากเปลี่ยนเพลงที่ทุกคนฟังอยู่? กดไอคอนเพลงด้านบน เลือกเพลง โอน 5 บาท"],["💬","แชทสด & ติดตาม","คุยกับทุกคนได้สดๆ ที่ช่องแชทด้านซ้าย และกด + ที่รูปโปรไฟล์เพื่อติดตามคนที่ชอบ"]];
+function onboard(){if(!me?.id||!ls.get("tt_new_"+me.id,0)||ls.get("tt_onb_"+me.id,0)||$("#onb"))return;
+ const o=document.createElement("div");o.id="onb";o.innerHTML=`<div class="obc"><div class="obs" id="obs">${OB.map(([e,t,d])=>`<section><div class="obe">${e}</div><h3>${t}</h3><p>${d}</p></section>`).join("")}</div>
+  <div class="obd">${OB.map((_,i)=>`<i${i?"":' class="on"'}></i>`).join("")}</div><div class="obb"><button id="obk">ข้าม</button><button class="btn" id="obn">ถัดไป</button></div></div>`;
+ document.body.appendChild(o);const s=$("#obs"),cur=()=>Math.round(s.scrollLeft/s.clientWidth),done=()=>{ls.set("tt_onb_"+me.id,1);localStorage.removeItem("tt_new_"+me.id);o.classList.add("bye");setTimeout(()=>o.remove(),300)};
+ s.onscroll=()=>{const i=cur();o.querySelectorAll(".obd i").forEach((d,k)=>d.classList.toggle("on",k==i));$("#obn").textContent=i==OB.length-1?"เริ่มเลย!":"ถัดไป"};
+ $("#obk").onclick=done;$("#obn").onclick=()=>{const i=cur();if(i>=OB.length-1)return done();s.scrollTo({left:(i+1)*s.clientWidth,behavior:"smooth"})}}
+const _go2=go;go=function(...a){const r=_go2.apply(this,a);const p=$("#onl");if(p){p.style.display=tab=="home"?"":"none";document.body.classList.toggle("hasonl",tab=="home")}if(tab=="home")setTimeout(onboard,600);return r};
