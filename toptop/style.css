@@ -234,3 +234,4 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 21px);transform:none}
 /* countdown pill: label above bold time */
 .post .timer{padding:5px 14px 5px 11px;gap:7px}.post .timer .tw{display:flex;flex-direction:column;line-height:1.1}.post .timer .tw small{font:400 10px Prompt;color:rgba(255,255,255,.75);white-space:nowrap}.post .timer .tl{font:700 16px Inter,Prompt;font-variant-numeric:tabular-nums}
 body.hasonl .post .timer{right:calc(50% - 30px)}#onl{left:calc(50% + 38px);top:calc(env(safe-area-inset-top) + 64px)}
+#lc{bottom:calc(204px + env(safe-area-inset-bottom))}
