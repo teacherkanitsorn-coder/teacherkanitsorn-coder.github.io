@@ -258,7 +258,7 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 .arh{margin:12px 0 4px;font:700 20px Prompt;background:linear-gradient(90deg,#ffd54a,#ff5cc8,#b26bff);-webkit-background-clip:text;background-clip:text;color:transparent}
 #arl h3{margin:16px 0 8px;font-size:16px}
 
-.rbs{position:absolute;left:8px;right:8px;top:8px;z-index:3;display:flex;flex-wrap:wrap;gap:4px;pointer-events:none}
+.rbs{position:absolute;left:8px;right:8px;top:8px;z-index:3;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;pointer-events:none}
 @property --ra{syntax:"<angle>";inherits:false;initial-value:0deg}
 .rbs .arb{--c:#3ee8ff;position:relative;font:600 10.5px/1.5 Prompt;padding:2px 8px;border-radius:99px;white-space:nowrap;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);
  border:1.2px solid transparent;background:linear-gradient(rgba(18,14,40,.38),rgba(18,14,40,.38)) padding-box,conic-gradient(from var(--ra),rgba(255,255,255,.18) 0 62%,var(--c) 80%,#fff 84%,var(--c) 88%,rgba(255,255,255,.18) 100%) border-box;
@@ -269,3 +269,4 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 .rbs .arb.up{animation:raSpin 3.2s linear infinite,raPop .5s ease}.rbs .arb.dn{animation:raSpin 3.2s linear infinite,raDrop .5s ease}
 @keyframes raPop{40%{transform:scale(1.22);box-shadow:0 0 18px var(--c)}}@keyframes raDrop{40%{transform:scale(.9);opacity:.7}}
 @media (prefers-reduced-motion:reduce){.rbs .arb,.rbs .arb.up,.rbs .arb.dn{animation:none}}
+.locf #lt{grid-column:1/-1}

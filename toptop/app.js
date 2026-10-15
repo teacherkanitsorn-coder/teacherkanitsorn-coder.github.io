@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="25";
+const APPV="26";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -171,7 +171,7 @@ function composer(){if(!tok){toast("สมัครฟรีก่อน แล�
  locPicker($("#locf"));const paint=()=>{$("#albp").innerHTML=PK.map((f,k)=>`<div class="at"><img src="${URL.createObjectURL(f)}" alt=""><button data-k="${k}" aria-label="ลบ">${I("x")}</button>${k?"":"<span>ปก</span>"}</div>`).join("")+(PK.length<5?`<label for="cf" class="at add">${I("cam")}<b>${PK.length?"เพิ่มรูป":"เลือกรูป"}</b><small>${PK.length}/5</small></label>`:"")+(PK.length?"":`<p class="m" style="grid-column:1/-1;margin:0">โพสต์ได้ 1-5 รูป ปัดดูในโพสต์เดียว · เริ่มต้นมีชีวิต 1 ชั่วโมง</p>`);
   $("#albp").querySelectorAll("button[data-k]").forEach(b=>b.onclick=e=>{e.preventDefault();PK.splice(+b.dataset.k,1);paint()})};paint();
  $("#cf").onchange=async e=>{const fs=[...e.target.files].slice(0,5-PK.length);e.target.value="";for(const f of fs){try{const c=await cropEditor(f);if(c)PK.push(c);paint()}catch(x){$("#cst").textContent="ผิดพลาด: "+x.message}}};
- $("#cgo").onclick=async()=>{const st=$("#cst"),bar=$("#cbar");if(!PK.length)return st.textContent="เลือกรูปก่อนนะ";const loc=locVal();if(!(loc.prov&&loc.amph&&loc.tamb)){$("#locf").classList.add("nudge");$("#locf").scrollIntoView({block:"center",behavior:"smooth"});return st.textContent="📍 กรุณาเลือกจังหวัด อำเภอ และตำบลก่อนโพสต์ (หมู่บ้านไม่บังคับ)"}ls.set("tt_loc",loc);const btn=$("#cgo");btn.disabled=true;bar.style.display="block";
+ $("#cgo").onclick=async()=>{const st=$("#cst"),bar=$("#cbar");if(!PK.length)return st.textContent="เลือกรูปก่อนนะ";const loc=locVal();if(!(loc.prov&&loc.amph&&loc.tamb)){$("#locf").classList.add("nudge");$("#locf").scrollIntoView({block:"center",behavior:"smooth"});return st.textContent="📍 กรุณาเลือกจังหวัด อำเภอ และตำบลก่อนโพสต์"}ls.set("tt_loc",loc);const btn=$("#cgo");btn.disabled=true;bar.style.display="block";
   const prog=(l,q)=>{bar.firstChild.style.width=Math.round(q)+"%";st.textContent=l+" "+Math.round(q)+"%"};const N=PK.length,D=[];let first=null,kb=0;
   try{for(let k=0;k<N;k++){const base=k*95/N;prog(`กำลังเตรียมรูป ${k+1}/${N}`,base+2);const c=await compressImage(PK[k]);if(!k)first=c;kb+=c.blob.size;
     D.push(await driveSend(c.blob,q=>prog(`กำลังอัปโหลด ${k+1}/${N}`,base+5+q*(95/N-5))))}
@@ -403,13 +403,13 @@ function plMenu(e,i){e.stopPropagation();$("#plm")?.remove();const A=$("#adm"),s
 
 // ---------- location (Thai admin dataset, static JSON from kongvut/thai-province-data, MIT) ----------
 let TH=null,LOCNUDGED=0,DJFREE=false;const BKK="กรุงเทพมหานคร";
-const locText=x=>{const b=x.prov==BKK;return [x.vill&&(x.vill.match(/^(บ้าน|หมู่)/)?x.vill:"บ."+x.vill),x.tamb&&(b?"แขวง":"ต.")+x.tamb,x.amph&&(b?"เขต":"อ.")+x.amph,b?x.prov:"จ."+x.prov].filter(Boolean).join(" ")};
-async function locPicker(box){LOCNUDGED=0;box.innerHTML=`<div class="lh">📍 พื้นที่ของคุณ <b class="req">*</b> <small>จังหวัด/อำเภอ/ตำบล จำเป็น · หมู่บ้านไม่บังคับ</small></div><div class="lg"><select id="lp"><option value="">จังหวัด</option></select><select id="la" disabled><option value="">อำเภอ</option></select><select id="lt" disabled><option value="">ตำบล</option></select><input id="lv" maxlength="60" placeholder="หมู่บ้าน (พิมพ์เอง)"></div>`;
- TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);const P=$("#lp"),A=$("#la"),T=$("#lt"),V=$("#lv"),o=(L,ph)=>`<option value="">${ph}</option>`+L.map(n=>`<option>${esc(n)}</option>`).join("");
- P.innerHTML=o(TH.map(p=>p[0]),"จังหวัด");const fa=()=>{const p=TH.find(p=>p[0]==P.value);A.innerHTML=o(p?p[1].map(a=>a[0]):[],P.value==BKK?"เขต":"อำเภอ");A.disabled=!p;fa2()},fa2=()=>{const p=TH.find(p=>p[0]==P.value),am=p&&p[1].find(a=>a[0]==A.value);T.innerHTML=o(am?am[1]:[],P.value==BKK?"แขวง":"ตำบล");T.disabled=!am;V.disabled=!T.value};
- const ok=()=>{const b=$("#cgo");if(b)b.disabled=!(P.value&&A.value&&T.value);if(P.value&&A.value&&T.value)box.classList.remove("nudge")};P.onchange=()=>{fa();ok()};A.onchange=()=>{fa2();ok()};T.onchange=()=>{V.disabled=!T.value;ok()};box._ok=ok;
- const d=ls.get("tt_loc",null);if(d&&d.prov){P.value=d.prov;fa();A.value=d.amph||"";fa2();T.value=d.tamb||"";V.disabled=!T.value;V.value=d.vill||""}else fa();ok()}
-function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if(L.prov)L.amph=g("#la");if(L.amph)L.tamb=g("#lt");if(L.tamb)L.vill=g("#lv");return L}
+const locText=x=>{const b=x.prov==BKK;return [x.tamb&&(b?"แขวง":"ต.")+x.tamb,x.amph&&(b?"เขต":"อ.")+x.amph,b?x.prov:"จ."+x.prov].filter(Boolean).join(" ")};
+async function locPicker(box){LOCNUDGED=0;box.innerHTML=`<div class="lh">📍 พื้นที่ของคุณ <b class="req">*</b> <small>จังหวัด/อำเภอ/ตำบล จำเป็น</small></div><div class="lg"><select id="lp"><option value="">จังหวัด</option></select><select id="la" disabled><option value="">อำเภอ</option></select><select id="lt" disabled><option value="">ตำบล</option></select></div>`;
+ TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);const P=$("#lp"),A=$("#la"),T=$("#lt"),o=(L,ph)=>`<option value="">${ph}</option>`+L.map(n=>`<option>${esc(n)}</option>`).join("");
+ P.innerHTML=o(TH.map(p=>p[0]),"จังหวัด");const fa=()=>{const p=TH.find(p=>p[0]==P.value);A.innerHTML=o(p?p[1].map(a=>a[0]):[],P.value==BKK?"เขต":"อำเภอ");A.disabled=!p;fa2()},fa2=()=>{const p=TH.find(p=>p[0]==P.value),am=p&&p[1].find(a=>a[0]==A.value);T.innerHTML=o(am?am[1]:[],P.value==BKK?"แขวง":"ตำบล");T.disabled=!am};
+ const ok=()=>{const b=$("#cgo");if(b)b.disabled=!(P.value&&A.value&&T.value);if(P.value&&A.value&&T.value)box.classList.remove("nudge")};P.onchange=()=>{fa();ok()};A.onchange=()=>{fa2();ok()};T.onchange=()=>ok();box._ok=ok;
+ const d=ls.get("tt_loc",null);if(d&&d.prov){P.value=d.prov;fa();A.value=d.amph||"";fa2();T.value=d.tamb||""}else fa();ok()}
+function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if(L.prov)L.amph=g("#la");if(L.amph)L.tamb=g("#lt");return L}
 // ---------- area ranking ----------
 // ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
 const LV_N=["ประเทศไทย","จังหวัด","อำเภอ","ตำบล"];let AR=null;
