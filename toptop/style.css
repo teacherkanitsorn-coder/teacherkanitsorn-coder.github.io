@@ -185,3 +185,15 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 21px);transform:none}
 #onb .obe{font-size:54px;line-height:1.2;filter:drop-shadow(0 6px 20px rgba(255,47,179,.5))}#onb h3{margin:10px 0 6px;font:700 20px Prompt;justify-content:center}#onb p{margin:0;font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.85);min-height:66px}
 #onb .obd{display:flex;justify-content:center;gap:6px;margin:14px 0}#onb .obd i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.3);transition:.25s}#onb .obd i.on{width:20px;background:linear-gradient(90deg,#ffc400,#ff2fb3)}
 #onb .obb{display:flex;justify-content:space-between;align-items:center;padding:0 20px}#onb #obk{background:none;border:0;color:rgba(255,255,255,.7);font:500 15px Prompt;padding:10px}#onb #obn{min-width:120px}
+/* fixed 3:4 card (matches iPhone screenshot: 14px margins, between countdown pill and caption) */
+.post{container-type:size}
+.post .ph{inset:auto;left:50%;top:calc(env(safe-area-inset-top) + 108px);transform:translateX(-50%);width:min(calc(100cqw - 28px),calc((100cqh - env(safe-area-inset-top) - 108px - 86px)*.75));aspect-ratio:3/4;display:block;border-radius:24px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55);z-index:3;background:rgba(0,0,0,.25)}
+.post .ph .alb{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior:contain;scrollbar-width:none;touch-action:pan-x pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.post .ph .alb::-webkit-scrollbar{display:none}
+.post .ph img{flex:0 0 100%;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center;border-radius:0;box-shadow:none;scroll-snap-align:center;scroll-snap-stop:always}
+.post .dots{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:5px;pointer-events:none}.post .dots i{width:6px;height:6px;border-radius:9px;background:rgba(255,255,255,.5);box-shadow:0 1px 3px rgba(0,0,0,.4);transition:.25s}.post .dots i.on{width:16px;background:#fff}
+.tap{display:none}
+.albp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.albp .at{position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
+.albp .at img{width:100%;height:100%;object-fit:cover}.albp .at button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:0}.albp .at button svg{width:14px;height:14px}
+.albp .at span{position:absolute;left:4px;bottom:4px;font-size:11px;padding:1px 7px;border-radius:9px;background:linear-gradient(90deg,#ffc400,#ff2fb3)}
+.albp .add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-style:dashed;cursor:pointer}.albp .add small{opacity:.6}

@@ -37,13 +37,13 @@ setInterval(pollNew,45000);
 function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
 async function homeRefresh(){$("#newp")?.remove();const h=$('#nav a[data-p="home"]');h&&h.classList.add("busy");try{await loadFeed(true);buildFeed();$("#feed").scrollTo({top:0})}finally{setTimeout(()=>h&&h.classList.remove("busy"),350)}}
 function postEl(x,i){const d=document.createElement("section");d.className="post";d.dataset.i=i;d.dataset.id=x.id;const src=media(x.fid);
- d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><img src="${src}" ${i>1?'loading="lazy"':""} decoding="async" alt=""></div><div class="tap"></div>
+ d.innerHTML=`<div class="glow" style="background-image:url('${x.thumb||src}')"></div><div class="ph"><div class="alb">${[x.fid,...(x.more?x.more.split(","):[])].map((f,k)=>`<img src="${media(f)}" ${i>1||k?'loading="lazy"':""} decoding="async" draggable="false" alt="">`).join("")}</div>${x.more?`<div class="dots">${[x.fid,...x.more.split(",")].map((_,k)=>`<i${k?"":' class="on"'}></i>`).join("")}</div>`:""}</div>
  <div class="timer glass">${I("clock")}<span class="tl">--:--</span><small>เหลือ</small></div>
  <div class="side"><button class="avb${x.uid!=me?.id&&!FOL.has(x.uid)?" ring":""}">${avHtml({name:x.name,avatar:x.avatar})}${tok&&x.uid!=me?.id&&!FOL.has(x.uid)?`<i class="fol fu${x.uid}" aria-label="ติดตาม"><svg viewBox="0 0 24 24"><path d="M4 17l-1-9 5 4 4-7 4 7 5-4-1 9z" fill="#fff"/></svg><b>+</b></i>`:""}</button><button class="sp"><div class="bub">${I("heart","f")}</div><b class="nh">${nf(x.hearts)}</b>หัวใจ</button>
  <button class="cmb"><div class="bub glass">${I("chat")}</div><b>${nf(x.cm)}</b>ความเห็น</button><button class="shb"><div class="bub glass">${I("share")}</div><b></b>ขอหัวใจ</button></div>
  <div class="meta"><div class="nm">@${esc(x.name)}</div>${x.caption?`<div class="cap">${esc(x.caption)}</div>`:""}<div class="gain">อายุรวม ${dur(Math.min(x.expires,now())-x.created)} · 10,000 หัวใจ = +1 ชม.</div></div>`;
  ambient(x.thumb,(a,b)=>d.querySelector(".ph img").style.setProperty("--pc",a.replace("rgb","rgba").replace(")",",.55)")));
- const tp=d.querySelector(".tap");let pd=null;tp.addEventListener("pointerdown",e=>pd={x:e.clientX,y:e.clientY,t:Date.now()});tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)heart(d,x,e);pd=null});
+ const tp=d.querySelector(".alb");if(x.more)tp.addEventListener("scroll",()=>{const k=Math.round(tp.scrollLeft/tp.clientWidth);d.querySelectorAll(".dots i").forEach((e,j)=>e.classList.toggle("on",j==k))},{passive:true});let pd=null;tp.addEventListener("pointerdown",e=>pd={x:e.clientX,y:e.clientY,t:Date.now()});tp.addEventListener("pointerup",e=>{if(pd&&Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<12&&Date.now()-pd.t<500)heart(d,x,e);pd=null});
  tp.addEventListener("dblclick",e=>e.preventDefault());
  const sp=d.querySelector(".sp");sp.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=sp.getBoundingClientRect();heart(d,x,{clientX:r.left+r.width/2-40+Math.random()*30,clientY:r.top})},{passive:false});sp.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
  d.querySelector(".cmb").onclick=()=>openCm(x);d.querySelector(".shb").onclick=()=>share(x);d.querySelector(".avb").onclick=()=>userPage(x.uid);const fo=d.querySelector(".fol");if(fo)fo.onclick=e=>{e.stopPropagation();feedFollow(x.uid)};d.querySelector(".nm").onclick=()=>userPage(x.uid);
@@ -162,16 +162,19 @@ async function driveSend(f,onp){const g=await api("/photo/ticket",{method:"POST"
  const ini=await post2({action:"init",name:f.name,size:f.size,mime:f.type});
  const r=await new Promise((ok,no)=>{const x=new XMLHttpRequest();x.open("PUT",ini.uploadUrl);x.setRequestHeader("Content-Type",f.type);x.upload.onprogress=e=>e.lengthComputable&&onp(e.loaded/e.total);x.onload=()=>{try{const j=JSON.parse(x.responseText);x.status<300?ok(j):no(new Error(j.error?.message||"อัปโหลดไม่สำเร็จ"))}catch(e){no(e)}};x.onerror=()=>no(new Error("เครือข่ายขัดข้อง"));x.send(f)});
  const fin=await post2({action:"finish",id:r.id});return {...fin,uid:g.ticket.uid}}
-function composer(){if(!tok){toast("สมัครฟรีก่อน แล้วโพสต์ได้เลย");return go("me")}const s=$("#sheet");s.className="glass on full";let pk=null;
+function composer(){if(!tok){toast("สมัครฟรีก่อน แล้วโพสต์ได้เลย");return go("me")}const s=$("#sheet");s.className="glass on full";const PK=[];
  s.innerHTML=`<div class="hd"><b>โพสต์รูป</b><button onclick="closeSheet()">${I("x")}</button></div><div class="bd">
-  <label class="pick" for="cf" id="cpv">${I("cam")}<b>เลือกรูปจากเครื่อง</b><span class="m">รูปตัวเองหรืออะไรก็ได้ · เริ่มต้นมีชีวิต 1 ชั่วโมง</span></label><input id="cf" type="file" accept="image/*" hidden>
+  <div class="albp" id="albp"></div><input id="cf" type="file" accept="image/*" multiple hidden>
   <input id="ccap" maxlength="150" placeholder="แคปชั่น (ไม่บังคับ)"><div class="prog" id="cbar" style="display:none"><i></i></div><div class="m" id="cst"></div>
   <button class="btn w" id="cgo">โพสต์เลย</button></div>`;
- $("#cf").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{const c=await cropEditor(f);if(!c)return;pk=c;$("#cpv").innerHTML=`<img src="${URL.createObjectURL(pk)}" alt=""><span class="chg">แตะเพื่อเลือกรูปใหม่</span>`}catch(x){$("#cst").textContent="ผิดพลาด: "+x.message}};
- $("#cgo").onclick=async()=>{const st=$("#cst"),bar=$("#cbar");if(!pk)return st.textContent="เลือกรูปก่อนนะ";const btn=$("#cgo");btn.disabled=true;bar.style.display="block";
-  const prog=(l,q)=>{bar.firstChild.style.width=Math.round(q)+"%";st.textContent=l+" "+Math.round(q)+"%"};
-  try{prog("กำลังเตรียมรูป",5);const c=await compressImage(pk);prog("กำลังอัปโหลด",20);const d=await driveSend(c.blob,q=>prog("กำลังอัปโหลด",20+q*75));
-   const r=await api("/photos",{method:"POST",body:JSON.stringify({drive:d,caption:$("#ccap").value,thumb:c.thumb,w:c.w,h:c.h})});prog("โพสต์แล้ว",100);st.textContent=`โพสต์แล้ว ✓ (${Math.round(c.blob.size/1024)} KB) มีชีวิต 1 ชั่วโมง`;
+ const paint=()=>{$("#albp").innerHTML=PK.map((f,k)=>`<div class="at"><img src="${URL.createObjectURL(f)}" alt=""><button data-k="${k}" aria-label="ลบ">${I("x")}</button>${k?"":"<span>ปก</span>"}</div>`).join("")+(PK.length<5?`<label for="cf" class="at add">${I("cam")}<b>${PK.length?"เพิ่มรูป":"เลือกรูป"}</b><small>${PK.length}/5</small></label>`:"")+(PK.length?"":`<p class="m" style="grid-column:1/-1;margin:0">โพสต์ได้ 1-5 รูป ปัดดูในโพสต์เดียว · เริ่มต้นมีชีวิต 1 ชั่วโมง</p>`);
+  $("#albp").querySelectorAll("button[data-k]").forEach(b=>b.onclick=e=>{e.preventDefault();PK.splice(+b.dataset.k,1);paint()})};paint();
+ $("#cf").onchange=async e=>{const fs=[...e.target.files].slice(0,5-PK.length);e.target.value="";for(const f of fs){try{const c=await cropEditor(f);if(c)PK.push(c);paint()}catch(x){$("#cst").textContent="ผิดพลาด: "+x.message}}};
+ $("#cgo").onclick=async()=>{const st=$("#cst"),bar=$("#cbar");if(!PK.length)return st.textContent="เลือกรูปก่อนนะ";const btn=$("#cgo");btn.disabled=true;bar.style.display="block";
+  const prog=(l,q)=>{bar.firstChild.style.width=Math.round(q)+"%";st.textContent=l+" "+Math.round(q)+"%"};const N=PK.length,D=[];let first=null,kb=0;
+  try{for(let k=0;k<N;k++){const base=k*95/N;prog(`กำลังเตรียมรูป ${k+1}/${N}`,base+2);const c=await compressImage(PK[k]);if(!k)first=c;kb+=c.blob.size;
+    D.push(await driveSend(c.blob,q=>prog(`กำลังอัปโหลด ${k+1}/${N}`,base+5+q*(95/N-5))))}
+   const r=await api("/photos",{method:"POST",body:JSON.stringify({drive:D[0],more:D.slice(1),caption:$("#ccap").value,thumb:first.thumb,w:first.w,h:first.h})});prog("โพสต์แล้ว",100);st.textContent=`โพสต์แล้ว ✓ ${N} รูป (${Math.round(kb/1024)} KB) มีชีวิต 1 ชั่วโมง`;
    setTimeout(async()=>{closeSheet();await loadFeed();go("home");buildFeed(r.id)},700)}catch(e){st.textContent="ผิดพลาด: "+e.message;bar.style.display="none"}finally{btn.disabled=false}}}
 function pickAvatar(){let i=$("#avin");if(!i){i=document.createElement("input");i.id="avin";i.type="file";i.accept="image/*";i.style.cssText="position:fixed;left:-9999px;opacity:0";document.body.appendChild(i)}
  i.value="";i.onchange=async()=>{const f=i.files&&i.files[0];if(!f)return;let st="เตรียมรูป";const show=t=>{const m=$("#avst");if(m)m.textContent=t;else toast(t)};
