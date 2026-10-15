@@ -44,7 +44,7 @@ async function boxGo(){const g=$("#gift"),b=$("#gbtn");b.disabled=true;g.classLi
 function burst(){if(RM.matches)return;const w=$("#sheet .boxw");if(!w)return;for(let i=0;i<18;i++){const s=document.createElement("i");s.className="cf";s.textContent=["✨","❤️","⭐","🎉"][i%4];s.style.setProperty("--x",(Math.random()*240-120)+"px");s.style.setProperty("--y",(-60-Math.random()*140)+"px");w.appendChild(s);setTimeout(()=>s.remove(),1200)}}
 // admin: artist toggle
 const ROSTER=["รำไพ แสงทอง","พร จันทพร","เมย์ จิราพร","ขวัญ พัชรี","จุ๊บแจง เจนจิรา","โชติ ณัฐชัย","นิค สะเลอปี้","วงค์ ชนะกันต์","การ์เนต สะเลอปี้","การ์ฟิวส์ สะเลอปี้"];
-const _admin=admin;admin=async function(){await _admin();const a=$("#adm");if(!a)return;const L=await api("/admin/members").catch(()=>[]);const hint=n=>ROSTER.some(r=>{const f=r.split(" ")[0];return n.includes(f)||n.toLowerCase().includes(f)})&&!/ถิ่น/.test(n);
+const _adminArt=admin;admin=async function(){await _adminArt();const a=$("#adm");if(!a)return;const L=await api("/admin/members").catch(()=>[]);const hint=n=>ROSTER.some(r=>{const f=r.split(" ")[0];return n.includes(f)||n.toLowerCase().includes(f)})&&!/ถิ่น/.test(n);
  const d=document.createElement("div");d.className="card";d.innerHTML=`<h3>⭐ ศิลปินของค่าย</h3><p class="m">ศิลปินที่ติ๊กไว้ เมื่อกดหัวใจ/คอมเมนต์รูปแฟนคลับ รูปจะได้ป้าย “ศิลปินมาเยือน ⭐” และแฟนได้รับแจ้งเตือน<br>รายชื่อ: ${ROSTER.join(", ")}</p><input id="artq" placeholder="ค้นหาสมาชิก" oninput="artList()"><div id="artl"></div>`;a.prepend(d);
  window.ARTM=L.map(m=>({...m,hint:hint(m.name)}));artList()};
 function artList(){const q=($("#artq")?.value||"").trim(),L=(window.ARTM||[]).filter(m=>!q||m.name.includes(q)).sort((x,y)=>(y.artist-x.artist)||(y.hint-x.hint)).slice(0,30);
