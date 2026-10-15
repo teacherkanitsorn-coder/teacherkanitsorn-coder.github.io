@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="23";
+const APPV="24";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -26,14 +26,13 @@ function ambient(src,cb){if(!src)return;const im=new Image();im.onload=()=>{try{
  cb(pick(0,0),pick(0,4))}catch(e){}};im.src=src}
 function setAmb(a,b){const r=document.documentElement.style;r.setProperty("--a1",a);r.setProperty("--a2",b)}
 // ---------- feed ----------
-// order: top 8 live photos by hearts first, then the rest shuffled with a per-session seed (stable within a session, no repeats)
-const SEED=sessionStorage.tt_seed||(sessionStorage.tt_seed=Math.random().toString(36).slice(2));
+// order: fresh open = #1 of the country first, then fully random (seeded so background reloads keep the order); หน้าแรก = new full random order
+let PIN=true,SEED=Math.random().toString(36).slice(2);
 const hsh=s=>{let h=2166136261;for(const c of s+SEED)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 let FOL=new Set(),SEEN=new Set(),newCnt=0;
 async function loadFeed(rand){try{const [j,fl]=await Promise.all([api("/photos"),tok?api("/following").catch(()=>[]):[]]);FOL=new Set(fl);const L=j.photos.filter(x=>x.expires>now());L.forEach(x=>SEEN.add(x.id));newCnt=0;newPill();
- const top=[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,8),ids=new Set(top.map(x=>x.id));
- const fol=L.filter(x=>!ids.has(x.id)&&FOL.has(x.uid)).sort((a,b)=>b.created-a.created);fol.forEach(x=>ids.add(x.id));
- if(rand){F=[...L];for(let i=F.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[F[i],F[k]]=[F[k],F[i]]}return}F=top.concat(fol,L.filter(x=>!ids.has(x.id)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
+ if(rand){PIN=false;SEED=Math.random().toString(36).slice(2)}
+ const t1=PIN?[...L].sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires).slice(0,1):[];F=t1.concat(L.filter(x=>!t1.includes(x)).sort((a,b)=>hsh(a.id)-hsh(b.id)))}catch(e){F=[]}}
 async function pollNew(){if(document.hidden||tab!="home")return;const j=await api("/photos?sort=new").catch(()=>null);if(!j)return;newCnt=j.photos.filter(x=>x.expires>now()&&!SEEN.has(x.id)&&x.uid!=me?.id).length;newPill()}
 setInterval(pollNew,45000);
 function newPill(){let p=$("#newp");if(!newCnt||tab!="home"){p&&p.remove();return}if(!p){p=document.createElement("button");p.id="newp";p.className="glass";p.onclick=homeRefresh;document.body.appendChild(p)}p.textContent=`↑ มีรูปใหม่ ${newCnt} รูป`}
@@ -414,13 +413,13 @@ function locVal(){const g=i=>($(i)?.value||"").trim();const L={prov:g("#lp")};if
 // ---------- area ranking ----------
 // ---------- area "ที่สุดของ..." ranking: ประเทศ / จังหวัด / อำเภอ / ตำบล ----------
 const LV_N=["ประเทศไทย","จังหวัด","อำเภอ","ตำบล"];let AR=null;
-function rankBadge(x){if(!(x.hearts>0))return "";const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;
- const r=f=>{const i=L.filter(f).sort((a,b)=>b.hearts-a.hearts).findIndex(p=>p.id==x.id)+1;return i&&i<=10?i:0};const o=[];let n;
- if(n=r(()=>1))o.push(`#${n} ของประเทศ`);
- if(x.prov&&(n=r(p=>p.prov==x.prov)))o.push(`#${n} ของ ${B?"":"จ."}${esc(x.prov)}`);
- if(x.amph&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph)))o.push(`#${n} ของ ${B?"เขต":"อ."}${esc(x.amph)}`);
- if(x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push(`#${n} ของ ${B?"แขวง":"ต."}${esc(x.tamb)}`);
- return o.length?`<div class="rbs">${o.map((t,i)=>`<span class="arb">${i?"":"🏆 "}${t}</span>`).join("")}</div>`:""}
+function rankBadge(x){const L=(F||[]).filter(p=>p.expires>now()),B=x.prov==BKK;if(x.expires<=now())return "";
+ const r=f=>{const A=L.filter(f).sort((a,b)=>b.hearts-a.hearts||b.expires-a.expires);return A.findIndex(p=>p.id==x.id)+1};const o=[];let n;
+ if(n=r(()=>1))o.push(`🇹🇭 #${n} ประเทศ`);
+ if(x.prov&&(n=r(p=>p.prov==x.prov)))o.push(`#${n} ${B?"":"จ."}${esc(x.prov)}`);
+ if(x.prov&&x.amph&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph)))o.push(`#${n} ${B?"เขต":"อ."}${esc(x.amph)}`);
+ if(x.prov&&x.amph&&x.tamb&&(n=r(p=>p.prov==x.prov&&p.amph==x.amph&&p.tamb==x.tamb)))o.push(`#${n} ${B?"แขวง":"ต."}${esc(x.tamb)}`);
+ return o.length?`<div class="rbs">${o.map(t=>`<span class="arb">${t}</span>`).join("")}</div>`:""}
 const areaTitle=(l,s)=>l==0?"ประเทศไทย":l==1?(s.prov==BKK?s.prov:"จ."+s.prov):l==2?`${s.prov==BKK?"เขต":"อ."}${s.amph} ${s.prov==BKK?"":"จ."}${s.prov}`:`${s.prov==BKK?"แขวง":"ต."}${s.tamb} ${s.prov==BKK?"เขต":"อ."}${s.amph}`;
 async function areaRank(){const p=$("#p-rank");TH=TH||await fetch("thai.json").then(r=>r.json()).catch(()=>[]);
  if(!AR){const d=ls.get("tt_loc",null)||{};AR={lvl:0,prov:d.prov||"สกลนคร",amph:d.amph||"",tamb:d.tamb||""}}
