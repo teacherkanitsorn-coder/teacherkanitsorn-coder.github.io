@@ -345,16 +345,16 @@ function cropEditor(file){return new Promise(async(done,fail)=>{let bm;try{bm=aw
   const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.92));close(new File([b],"crop.jpg",{type:"image/jpeg"}))};
  requestAnimationFrame(lay)})}
 
-// ---------- live room: floating chat overlay + DJ voice + presence ----------
-const LV={since:0,join:Date.now(),played:new Set(ls.get("tt_vplayed",[])),hide:ls.get("tt_lchide",false),idle:0,t:0,busy:0,muted:false};
+// ---------- live room: floating chat overlay + presence ----------
+const LV={since:0,join:Date.now(),hide:ls.get("tt_lchide",false),idle:0,t:0,busy:0,muted:false};
 function lcBuild(){if($("#lc"))return;const d=document.createElement("div");d.id="lc";
- d.innerHTML=`<div class="lcm" id="lcm"></div><div class="lcb"><button class="lct" id="lct" aria-label="ซ่อนแชท"></button><form id="lcf"><input id="lci" maxlength="120" placeholder="พิมพ์คุยกัน…" enterkeyhint="send" autocomplete="off"></form><button class="lcmic" id="lcmic" aria-label="กดค้างเพื่อพูด">🎙️</button></div><div id="djv">🎙️ ดีเจพูด</div>`;
+ d.innerHTML=`<div class="lcm" id="lcm"></div><div class="lcb"><button class="lct" id="lct" aria-label="ซ่อนแชท"></button><form id="lcf"><input id="lci" maxlength="120" placeholder="พิมพ์คุยกัน…" enterkeyhint="send" autocomplete="off"><button type="submit" id="lcs" aria-label="ส่ง" disabled><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button></form></div>`;
  document.body.appendChild(d);$("#lct").onclick=()=>{LV.hide=!LV.hide;ls.set("tt_lchide",LV.hide);if(LV.hide)$("#lcm").innerHTML="";lcVis();if(!LV.hide){LV.since=0;livePoll()}};
  $("#lcf").onsubmit=async e=>{e.preventDefault();const i=$("#lci"),t=i.value.trim();if(!t||LV.busy)return;if(!tok){toast("สมัครฟรีก่อน แล้วคุยได้เลย");return go("me")}
-  LV.busy=1;try{await api("/chat",{method:"POST",body:JSON.stringify({text:t})});i.value="";LV.idle=0;livePoll()}catch(x){toast(x.message)}finally{LV.busy=0}};
- const mic=$("#lcmic");if(mic){mic.addEventListener("pointerdown",e=>{e.preventDefault();recStart()});["pointerup","pointercancel","pointerleave"].forEach(k=>mic.addEventListener(k,()=>recStop()));mic.oncontextmenu=e=>e.preventDefault()}
+  LV.busy=1;LV.sync();try{await api("/chat",{method:"POST",body:JSON.stringify({text:t})});i.value="";LV.idle=0;livePoll()}catch(x){toast(x.message)}finally{LV.busy=0;LV.sync()}};
+ const inp=$("#lci"),sb=$("#lcs");LV.sync=()=>sb.disabled=LV.busy||!inp.value.trim();inp.oninput=LV.sync;
  lcVis()}
-function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?"💬":I("x");$("#lcmic").style.display=me?.role=="admin"&&!LV.hide?"":"none"}
+function lcVis(){const d=$("#lc");if(!d)return;d.style.display=tab=="home"?"":"none";d.classList.toggle("off",LV.hide);$("#lct").innerHTML=LV.hide?"💬":I("x")}
 function lcAdd(ms){const box=$("#lcm");if(!box||LV.hide)return;for(const x of ms){if(box.querySelector(`[data-i="${x.id}"]`))continue;const e=document.createElement("div");e.className="lcx";e.dataset.i=x.id;
   e.innerHTML=`${avHtml({name:x.name,avatar:x.avatar},"av")}<p><b>${esc(x.name)}</b> ${esc(x.text)}</p>`;if(me?.role=="admin")e.onclick=()=>lcMod(x);box.appendChild(e)}
  const all=[...box.children];all.slice(0,Math.max(0,all.length-8)).forEach(e=>e.remove());[...box.children].forEach((e,i,a)=>e.style.opacity=Math.min(1,.35+(i+1)/a.length))}
@@ -364,23 +364,9 @@ async function lcMod(x){const c=prompt(`ข้อความของ ${x.name}
 async function livePoll(){clearTimeout(LV.t);if(document.hidden)return;lcBuild();lcVis();
  try{const showing=tab=="home"&&!LV.hide,q=showing?LV.since:-1;const j=await api("/live?since="+(q<0?LV.since||1e15:q));
   if(showing&&j.msgs.length){lcAdd(j.msgs);LV.since=j.msgs[j.msgs.length-1].id;LV.idle=0}else LV.idle++;
-  if(j.voice)voicePlay(j.voice,j.now)}catch(e){LV.idle++}
+}catch(e){LV.idle++}
  const ms=document.hidden?0:(tab=="home"&&!LV.hide?(LV.idle<15?2500:5000):8000);if(ms)LV.t=setTimeout(livePoll,ms)}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){LV.idle=0;livePoll()}else clearTimeout(LV.t)});
-// voice playback: once, only clips newer than when we joined and <2 min old; music ducked meanwhile
-let VA=null;const vaPrime=()=>{if(VA)return;VA=new Audio();VA.playsInline=true;VA.src="data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAAhmcmVlAAAAAG1kYXQ=";VA.play().catch(()=>{})};
-addEventListener("pointerdown",vaPrime,{once:true,capture:true});
-async function voicePlay(v,srvNow){if(LV.played.has(v.id)||v.t<LV.join-5000||srvNow-v.t>120000)return;LV.played.add(v.id);ls.set("tt_vplayed",[...LV.played].slice(-20));
- vaPrime();const ind=$("#djv");try{const r=await fetch(TT_API+"/voice/"+v.id);if(!r.ok)return;const u=URL.createObjectURL(await r.blob());VA.src=u;
-  ytc("setVolume",[12]);ind.classList.add("on");await VA.play();await new Promise(ok=>{VA.onended=VA.onerror=ok;setTimeout(ok,35000)})}catch(e){}finally{ind.classList.remove("on");ytc("setVolume",[100])}}
-// admin push-to-talk
-let REC=null;async function recStart(){if(REC)return;try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const mt=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported?.(t))||"";
- const r=new MediaRecorder(s,mt?{mimeType:mt,audioBitsPerSecond:48000}:{});const ch=[];REC={r,s,t0:Date.now(),ch};r.ondataavailable=e=>e.data.size&&ch.push(e.data);r.start(250);
- $("#lcmic").classList.add("rec");ytc("setVolume",[12]);REC.cap=setTimeout(recStop,30000);toast("กำลังพูด… ปล่อยเพื่อส่ง")}catch(e){REC=null;toast("เปิดไมค์ไม่ได้: "+e.message)}}
-async function recStop(){const R=REC;if(!R||R.stopping)return;R.stopping=1;clearTimeout(R.cap);await new Promise(ok=>{R.r.onstop=ok;R.r.stop()});R.s.getTracks().forEach(t=>t.stop());REC=null;$("#lcmic")?.classList.remove("rec");ytc("setVolume",[100]);
- const dur=(Date.now()-R.t0)/1000;if(dur<0.7)return toast("กดค้างไว้แล้วพูด");const blob=new Blob(R.ch,{type:R.r.mimeType||"audio/mp4"});
- const b64=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(String(f.result).split(",")[1]);f.readAsDataURL(blob)});
- try{const j=await api("/admin/voice",{method:"POST",body:JSON.stringify({mime:blob.type,data:b64,dur})});LV.played.add(j.id);toast(`ส่งเสียงแล้ว (${Math.round(dur)} วิ)`)}catch(e){toast(e.message)}}
 // admin dashboard on top of the admin panel
 const _admin=admin;admin=async function(){await _admin();const a=$("#adm");if(!a)return;try{const d=await api("/admin/dash");const c=document.createElement("div");c.className="dash";
  c.innerHTML=[["สมาชิกทั้งหมด",d.members],["ออนไลน์ตอนนี้",d.online],["สมัครใหม่วันนี้",d.newToday],["รูปที่ยังมีชีวิต",d.live],["หัวใจวันนี้",d.heartsToday]].map(([l,v])=>`<div><b>${nf(v)}</b><span>${l}</span></div>`).join("");a.prepend(c)}catch(e){}};
