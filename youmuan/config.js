@@ -1,2 +1,2 @@
-// When the Worker (../worker) is deployed, set API to its URL, e.g. "https://youmuan-api.<acct>.workers.dev"
-window.YM_API = "";
+// Youม่วน backend (Cloudflare Worker + D1)
+window.YM_API = "https://youmuan-api.nickvideo.workers.dev";
