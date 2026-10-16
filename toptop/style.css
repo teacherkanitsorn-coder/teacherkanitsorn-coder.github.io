@@ -326,3 +326,5 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 .thb{display:inline-flex;align-items:center;gap:8px;margin:8px auto 6px;padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,rgba(255,45,120,.28),rgba(140,60,255,.28));border:1px solid rgba(255,120,190,.55);box-shadow:0 0 16px rgba(255,60,140,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-family:Kanit,sans-serif}
 .thb .thh{font-size:20px;animation:thp 1.6s ease-in-out infinite}.thb .thl{font-size:14px;opacity:.9}.thb b{font-size:22px;font-weight:700;background:linear-gradient(90deg,#ff7ab8,#ffd36e);-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes thp{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+.pvt{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:11px;font-weight:400;line-height:16px;vertical-align:middle;white-space:nowrap}
+.pnw{display:flex!important;align-items:center;min-width:0}.pnw .pnn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.pnw .pvt{flex:none}
