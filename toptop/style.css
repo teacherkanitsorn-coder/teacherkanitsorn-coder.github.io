@@ -322,3 +322,7 @@ body.hasonl .post .timer{left:auto;right:calc(50% - 24px);transform:none}#onl{le
 #evt.out{opacity:0;transform:translate(-50%,-14px);transition:.4s}@keyframes evin{from{opacity:0;transform:translate(-50%,-24px) scale(.8)}}
 #evt .evc{position:absolute;left:25px;top:50%;pointer-events:none}#evt .evc i{position:absolute;width:6px;height:6px;border-radius:2px;background:var(--c);animation:evc 1s ease-out forwards;transform:rotate(var(--a)) translateY(0)}
 @keyframes evc{to{transform:rotate(var(--a)) translateY(-46px) rotate(180deg);opacity:0}}
+
+.thb{display:inline-flex;align-items:center;gap:8px;margin:8px auto 6px;padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,rgba(255,45,120,.28),rgba(140,60,255,.28));border:1px solid rgba(255,120,190,.55);box-shadow:0 0 16px rgba(255,60,140,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-family:Kanit,sans-serif}
+.thb .thh{font-size:20px;animation:thp 1.6s ease-in-out infinite}.thb .thl{font-size:14px;opacity:.9}.thb b{font-size:22px;font-weight:700;background:linear-gradient(90deg,#ff7ab8,#ffd36e);-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes thp{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
