@@ -1,5 +1,5 @@
 // TopTop — photos that live on hearts. 10,000 hearts = +1 hour. New photo = 1 hour. Music by the admin DJ.
-const APPV="35";
+const APPV="36";
 (function vchk(){const f=()=>fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.v&&j.v!=APPV&&sessionStorage.getItem("tt_vr")!=j.v){sessionStorage.setItem("tt_vr",j.v);(caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):Promise.resolve()).then(()=>navigator.serviceWorker?.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{});f();document.addEventListener("visibilitychange",()=>{if(!document.hidden)f()});setInterval(f,120000)})();
 const API=window.TT_API||"",$=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[<>"'&]/g,c=>"&"+"#"+c.charCodeAt(0)+";");
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage[k])??d}catch(e){return d}},set:(k,v)=>localStorage[k]=JSON.stringify(v)};
@@ -203,15 +203,15 @@ async function mePage(){const p=$("#p-me");
  if(!tok){if(p.querySelector("#af"))return;p.innerHTML=`<div style="text-align:center;margin-top:10px"><img src="https://youmuan-api.nickvideo.workers.dev/icons/logo-header.png" height="44" alt=""><p class="m">โพสต์รูป ให้เพื่อนกดหัวใจต่อชีวิต<br>ทุก 10,000 หัวใจ = +1 ชั่วโมง</p></div><div class="chips"><span class="chip on" id="tS">สมัครฟรี</span><span class="chip" id="tL">เข้าสู่ระบบ</span></div><div id="af"></div>`;
   const su=()=>{$("#af").innerHTML=`<input id="fn" placeholder="ชื่อที่แสดง" maxlength="40"><input id="fl" placeholder="เบอร์โทรหรืออีเมล" autocomplete="username"><input id="fp" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" autocomplete="new-password">
    <label class="ck" for="c1"><input type="checkbox" id="c1"><span>ยอมรับข้อกำหนดการใช้งาน</span></label><label class="ck" for="c2"><input type="checkbox" id="c2"><span>ยินยอมตามประกาศความเป็นส่วนตัว (PDPA)</span></label><p class="m"><a onclick="showTerms()" style="text-decoration:underline">อ่านข้อกำหนดและความเป็นส่วนตัว</a></p><button class="btn w" id="go">สมัครสมาชิก</button>`;
-   $("#go").onclick=()=>auth("/signup",{name:$("#fn").value,login:$("#fl").value,password:$("#fp").value,acceptTerms:$("#c1").checked,acceptPrivacy:$("#c2").checked})};
+   $("#go").onclick=()=>auth("/signup",{name:$("#fn").value,login:$("#fl").value,password:$("#fp").value,acceptTerms:$("#c1").checked,acceptPrivacy:$("#c2").checked,ref:ls.get("tt_ref","")})};
   const li=()=>{$("#af").innerHTML=`<input id="fl" placeholder="เบอร์โทรหรืออีเมล" autocomplete="username"><input id="fp" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"><button class="btn w" id="go">เข้าสู่ระบบ</button>`;$("#go").onclick=()=>auth("/login",{login:$("#fl").value,password:$("#fp").value})};
   $("#tS").onclick=()=>{$("#tS").classList.add("on");$("#tL").classList.remove("on");su()};$("#tL").onclick=()=>{$("#tL").classList.add("on");$("#tS").classList.remove("on");li()};su();return}
  const j=await api("/me").catch(e=>{if(/เข้าสู่ระบบ/.test(e.message)){tok=null;localStorage.removeItem("tt_tok")}return null});if(!j)return mePage();me={...j.user,unread:j.unread};badge();
  p.innerHTML=`<div style="text-align:center"><a onclick="pickAvatar()" style="position:relative;display:inline-block">${avHtml(me,"av big")}<span class="glass" style="position:absolute;right:-4px;bottom:6px;border-radius:50%;width:32px;height:32px;display:grid;place-items:center">${I("cam")}</span></a>
-  <h2>${esc(me.name)}</h2><div class="fc" id="myfc"></div><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
+  <h2>${esc(me.name)}</h2><div class="fc" id="myfc"></div><p class="m" id="avst">แตะรูปเพื่อเปลี่ยนรูปโปรไฟล์</p></div>${statsOf(j.photos)}<button class="btn w" onclick="composer()">+ โพสต์รูปใหม่</button><div id="invc"></div><h3>รูปของฉัน</h3>${j.photos.length?photoGrid(j.photos):'<p class="m">ยังไม่มีรูป</p>'}
   <details class="more"><summary>${I("menu")}เมนูเพิ่มเติม</summary>${me.role=="admin"?'<div id="adm"></div>':`<h3>แอดมิน</h3><input id="pin" type="password" placeholder="รหัส PIN แอดมิน"><button class="btn o" onclick="pinLink()">ยืนยัน</button>`}
-  <p class="lgl"><a onclick="showTerms()">นโยบายความเป็นส่วนตัว (PDPA)</a> · <a onclick="showTerms('tos')">ข้อกำหนดการใช้งาน</a></p><p><button class="btn o" onclick="logout()">ออกจากระบบ</button> ${me.role!="admin"?`<button class="btn o dz" onclick="deleteAccount()">ลบบัญชี</button>`:""}</p></details>`;if(me.role=="admin")admin()}
-async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;if(path=="/signup"&&me?.id)ls.set("tt_new_"+me.id,1);await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
+  <p class="lgl"><a onclick="showTerms()">นโยบายความเป็นส่วนตัว (PDPA)</a> · <a onclick="showTerms('tos')">ข้อกำหนดการใช้งาน</a></p><p><button class="btn o" onclick="logout()">ออกจากระบบ</button> ${me.role!="admin"?`<button class="btn o dz" onclick="deleteAccount()">ลบบัญชี</button>`:""}</p></details>`;inviteCard();if(me.role=="admin")admin()}
+async function auth(path,b){try{const j=await api(path,{method:"POST",body:JSON.stringify(b)});tok=j.token;ls.set("tt_tok",tok);me=j.user;if(path=="/signup"&&me?.id)ls.set("tt_new_"+me.id,1);if(path=="/signup")localStorage.removeItem("tt_ref");await loadFeed();go("home");buildFeed()}catch(e){toast(e.message)}}
 async function pinLink(){try{await api("/pin-link",{method:"POST",body:JSON.stringify({pin:$("#pin").value})});toast("เป็นแอดมินแล้ว");mePage()}catch(e){toast(e.message)}}
 async function logout(){await api("/logout",{method:"POST"}).catch(()=>{});tok=null;me=null;localStorage.removeItem("tt_tok");badge();mePage()}
 async function blockUser(id,on){if(on&&!confirm("บล็อกสมาชิกนี้? จะไม่เห็นข้อความจากกันอีก"))return;await api("/block",{method:"POST",body:JSON.stringify({id,on})}).catch(e=>toast(e.message));toast(on?"บล็อกแล้ว":"ยกเลิกบล็อกแล้ว");$("#ov").style.display="none";closeSheet()}
@@ -254,7 +254,7 @@ let chatBusy=false;async function pollChat(first){if(!chatPeer||!$("#msgs"))retu
 let dmSending=false;async function sendDm(){const i=$("#dmi"),t=i.value.trim();if(!t||dmSending)return;dmSending=true;const btn=$("#sheet form .btn");btn&&(btn.disabled=true);
  const cid=Date.now().toString(36)+Math.random().toString(36).slice(2,8),box=$("#msgs"),d=document.createElement("div");d.className="msg me pend";d.dataset.cid=cid;d.innerHTML=esc(t)+"<small>กำลังส่ง…</small>";box.appendChild(d);box.parentElement.scrollTop=1e9;i.value="";
  try{await api("/dm",{method:"POST",body:JSON.stringify({to:chatPeer,text:t,cid})});await pollChat()}catch(e){d.remove();toast(e.message);i.value=t}finally{dmSending=false;btn&&(btn.disabled=false)}}
-async function refreshUnread(){if(!tok)return;const j=await api("/me").catch(()=>null);if(j){const had=me?.role;me={...j.user,unread:j.unread};badge();if(had!=me.role)paintNp()}}
+async function refreshUnread(){if(!tok)return;const j=await api("/me").catch(()=>null);if(j){const had=me?.role;me={...j.user,unread:j.unread};badge();if(had!=me.role)paintNp();if(me.role=="admin")onlinePaint(LASTON);if(j.notifs)notifCheck()}}
 function badge(){const a=document.querySelector('#nav a[data-p="chat"]');if(!a)return;a.querySelector(".bdg")?.remove();if(me?.unread)a.insertAdjacentHTML("beforeend",`<span class="bdg">${me.unread>99?"99+":me.unread}</span>`)}
 setInterval(()=>{if(!document.hidden&&!chatT)refreshUnread()},20000);
 // ---------- terms ----------
@@ -386,13 +386,13 @@ async function livePoll(){clearTimeout(LV.t);if(document.hidden)return;lcBuild()
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){LV.idle=0;livePoll()}else clearTimeout(LV.t)});
 // admin dashboard on top of the admin panel
 const _admin=admin;admin=async function(){await _admin();const a=$("#adm");if(!a)return;try{const d=await api("/admin/dash");const c=document.createElement("div");c.className="dash";
- c.innerHTML=[["สมาชิกทั้งหมด",d.members],["ออนไลน์ตอนนี้",d.online],["สมัครใหม่วันนี้",d.newToday],["รูปที่ยังมีชีวิต",d.live],["หัวใจวันนี้",d.heartsToday]].map(([l,v])=>`<div><b>${nf(v)}</b><span>${l}</span></div>`).join("");a.prepend(c)}catch(e){}};
+ c.innerHTML=[["สมาชิกทั้งหมด",d.members],["ออนไลน์ตอนนี้",d.online],["สมัครใหม่วันนี้",d.newToday],["รูปที่ยังมีชีวิต",d.live],["หัวใจวันนี้",d.heartsToday]].map(([l,v])=>`<div><b>${nf(v)}</b><span>${l}</span></div>`).join("");a.prepend(c);const ob=document.createElement("button");ob.className="btn o w";ob.textContent="🟢 ดูคนที่ออนไลน์ตอนนี้";ob.onclick=onlineList;c.after(ob)}catch(e){}};
 const _go=go;go=function(...a){const r=_go.apply(this,a);setTimeout(()=>{lcVis();if(tab=="home"&&!LV.hide){LV.idle=0;livePoll()}},0);return r};
 setTimeout(livePoll,1500);
 
 // ---------- online-now pill (top centre, next to the lifetime countdown) ----------
-function onlinePaint(n){let p=$("#onl");if(n==null)return;if(!p){p=document.createElement("div");p.id="onl";document.body.appendChild(p)}
- p.innerHTML=`<i></i>ออนไลน์ <b>${nf(Math.max(1,n))}</b> คน`;p.style.display=tab=="home"?"":"none";document.body.classList.toggle("hasonl",tab=="home")}
+let LASTON=null;function onlinePaint(n){let p=$("#onl");if(n==null)return;LASTON=n;if(!p){p=document.createElement("div");p.id="onl";document.body.appendChild(p)}
+ p.innerHTML=`<i></i>ออนไลน์ <b>${nf(Math.max(1,n))}</b> คน`;const ad=me?.role=="admin";p.classList.toggle("adm",ad);p.onclick=ad?onlineList:null;p.style.display=tab=="home"?"":"none";document.body.classList.toggle("hasonl",tab=="home")}
 // ---------- onboarding for brand-new signups (once per account) ----------
 const OB=[["👆","ปัดดูรูป","ปัดขึ้น-ลงเพื่อดูรูปของทุกคน รูปไหนชอบ แวะกดหัวใจให้เลย"],["❤️","ใจรัว = ต่อชีวิตรูป","ทุกรูปมีเวลาจำกัด รัวหัวใจให้รูปที่ชอบ ทุก 10,000 หัวใจ = +1 ชม."],["➕","โพสต์รูปของคุณ","กดปุ่ม + ตรงกลาง เลือกรูป จัดกรอบ แล้วโพสต์ เริ่มต้นมีชีวิต 1 ชม."],["🎵","เป็นดีเจแค่ 5 บาท","อยากเปลี่ยนเพลงที่ทุกคนฟังอยู่? กดไอคอนเพลงด้านบน เลือกเพลง โอน 5 บาท"],["💬","แชทสด & ติดตาม","คุยกับทุกคนได้สดๆ ที่ช่องแชทด้านซ้าย และกด + ที่รูปโปรไฟล์เพื่อติดตามคนที่ชอบ"]];
 function onboard(){if(!me?.id||!ls.get("tt_new_"+me.id,0)||ls.get("tt_onb_"+me.id,0)||$("#onb"))return;
@@ -493,3 +493,29 @@ function quotaCard(q){if(!q||!q.lim)return "";const nm={req:"คำขอ Cloudf
  return `<div class="card glass qta"><h3 style="margin-top:0">📊 โควตาวันนี้</h3>${Object.keys(q.lim).map(k=>{const v=q.use[k]||0,p=Math.min(100,v/q.lim[k]*100);return `<div class="qr"><div><span>${nm[k]}</span><b>${v.toLocaleString()} / ${q.lim[k].toLocaleString()}</b></div><i><u style="width:${p}%;background:${p>=80?"#ff4d6d":p>=50?"#ffb300":"#3dffa0"}"></u></i></div>`}).join("")}<p class="m">${esc(q.note)} · แจ้ง LINE เมื่อถึง 80%</p></div>`}
 async function slipQR(f){try{if(!window.jsQR)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)});
  const bm=await createImageBitmap(f);for(const sc of [1,.6,1.6]){const w=Math.round(Math.min(bm.width*sc,1600)),h=Math.round(bm.height*w/bm.width),c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d",{willReadFrequently:true});g.drawImage(bm,0,0,w,h);const r=jsQR(g.getImageData(0,0,w,h).data,w,h,{inversionAttempts:"attemptBoth"});if(r&&r.data)return r.data.slice(0,300)}}catch(e){}return ""}
+
+// ---------- v36: admin online list · referral invite (+1 ชม.) · occasional share popup ----------
+(function(){const r=new URLSearchParams(location.search).get("ref");if(r&&/^[\w-]{2,12}$/.test(r)){if(!tok)ls.set("tt_ref",r);history.replaceState(null,"",location.pathname+location.hash)}})();
+async function onlineList(){if(me?.role!="admin")return;sheet('<p class="m">กำลังโหลด...</p>');$("#sheet .hd b").textContent="🟢 ออนไลน์ตอนนี้";
+ const L=await api("/admin/online").catch(e=>{toast(e.message);return null});if(!L)return closeSheet();
+ $("#sheet .bd").innerHTML=`<p class="m">${nf(L.length)} คน · อัปเดตเมื่อสักครู่ (ใช้งานภายใน 1 นาที)</p>`+(L.length?L.map(x=>`<a class="row onr" onclick="closeSheet();userPage(${x.id})">${avHtml(x,"av")}<div class="t"><div>${esc(x.name)}</div><small>📍 ${esc(x.prov||"ยังไม่ระบุจังหวัด")}</small></div><i class="dot"></i></a>`).join(""):'<p class="m">ยังไม่มีใครออนไลน์</p>')}
+function inviteUrl(c){return location.origin+location.pathname+"?ref="+encodeURIComponent(c)}
+async function inviteShare(){if(!tok){toast("สมัครฟรีก่อน แล้วชวนเพื่อนได้");return go("me")}let c=ls.get("tt_myref","");if(!c){const j=await api("/invite").catch(()=>null);c=j?.ref||"";if(c)ls.set("tt_myref",c)}if(!c)return toast("ลองใหม่อีกครั้งนะ");
+ const u=inviteUrl(c),t="มาเล่น TopTop กัน! ลงรูปแล้วให้เพื่อนรัวใจต่อชีวิต แข่งติดอันดับตำบล อำเภอ จังหวัด 🔥 สมัครฟรีผ่านลิงก์นี้เลย";
+ const cp=()=>{(navigator.clipboard?navigator.clipboard.writeText(t+" "+u):Promise.reject()).then(()=>toast("คัดลอกลิงก์ชวนแล้ว ส่งให้เพื่อนเลย"),()=>{prompt("คัดลอกลิงก์นี้ส่งให้เพื่อน",u)})};
+ if(navigator.share)navigator.share({title:"TopTop",text:t,url:u}).catch(e=>{if(e&&e.name!="AbortError")cp()});else cp()}
+async function inviteCard(){const b=$("#invc");if(!b)return;const j=await api("/invite").catch(()=>null);if(!j||!$("#invc"))return;ls.set("tt_myref",j.ref);
+ b.innerHTML=`<div class="card glass inv"><b>🎁 ชวนเพื่อนมาสมัคร รับเวลา +1 ชั่วโมง</b><p class="m">เพื่อนสมัครผ่านลิงก์ของคุณ 1 คน = รูปล่าสุดของคุณได้เวลาเพิ่ม 1 ชั่วโมง (ถ้าไม่มีรูปที่ยังมีชีวิต จะเก็บไว้ใช้กับรูปถัดไป)</p>
+ <div class="invl" onclick="navigator.clipboard&&navigator.clipboard.writeText('${inviteUrl(j.ref)}').then(()=>toast('คัดลอกลิงก์แล้ว'))">${esc(inviteUrl(j.ref))}</div>
+ <div class="invs"><span>ชวนสำเร็จ <b>${nf(j.count)}</b> คน</span>${j.credit?`<span>เครดิตรอใช้ <b>+${Math.round(j.credit/HOUR)} ชม.</b></span>`:""}</div><button class="btn w" onclick="inviteShare()">${I("share")} แชร์ลิงก์ชวนเพื่อน</button></div>`}
+let NBUSY=0;async function notifCheck(){if(NBUSY||!tok)return;NBUSY=1;try{const L=await api("/notif");if(L.length){modal(`<div class="refok"><div class="big">⏰ +1 ชม.</div>${L.map(x=>`<p>${esc(x.text)}</p>`).join("")}<button class="btn w" onclick="$('#modal').style.display='none';inviteShare()">${I("share")} ชวนเพื่อนเพิ่ม</button></div>`);await api("/notif/seen",{method:"POST",body:JSON.stringify({id:L[L.length-1].id})});loadFeed().then(()=>{}).catch(()=>{});if(tab=="me")inviteCard()}}catch(e){}NBUSY=0}
+// share popup: right after the app opens, then every 10 min of active use; auto-hides after 15 s; closing hides only that one
+const SP={every:10*6e4,use:0,due:true};
+setInterval(()=>{if(document.hidden||!tok)return;if(!SP.due){SP.use+=5e3;if(SP.use>=SP.every)SP.due=true}
+ if(!SP.due||tab!="home"||$("#sheet.on")||$("#tts")||$("#onb")||$("#crop")||$("#shp")||($("#modal")&&$("#modal").style.display=="block"))return;
+ SP.due=false;SP.use=0;sharePop()},5e3);
+function sharePop(){$("#shp")?.remove();const d=document.createElement("div");d.id="shp";d.className="glass";
+ d.innerHTML=`<button class="x" aria-label="ปิด">${I("x")}</button><div class="g">🎁</div><div class="tx"><b>ชวนเพื่อนมาเล่น รับ +1 ชั่วโมง!</b><span>เพื่อนสมัครผ่านลิงก์คุณ รูปคุณอยู่ได้นานขึ้น</span></div><button class="go">${I("share")} แชร์</button><i class="bar"></i>`;
+ document.body.appendChild(d);const bye=()=>{d.classList.add("bye");setTimeout(()=>d.remove(),350)};const t=setTimeout(bye,15000);
+ d.querySelector(".x").onclick=()=>{clearTimeout(t);bye()};
+ d.querySelector(".go").onclick=()=>{clearTimeout(t);bye();inviteShare()}}
